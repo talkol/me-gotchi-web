@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import React, { useEffect, useState, useMemo, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -59,7 +59,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const initialState: FormState = { status: "idle", message: "" };
-  const [state, formAction] = useFormState(generateMeGotchiAsset, initialState);
+  const [state, formAction] = useActionState(generateMeGotchiAsset, initialState);
 
   const { control, handleSubmit, formState: { errors }, watch, reset } = useForm<FormData>({
     resolver: zodResolver(formSchema),
