@@ -395,7 +395,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     defaultValues: {
       firstName: "",
       gender: undefined,
-      age: undefined,
+      age: NaN,
       photo: undefined,
       inviteCode: inviteCode,
       likedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
