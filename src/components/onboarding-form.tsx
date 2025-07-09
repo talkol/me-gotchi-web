@@ -60,7 +60,7 @@ const OnboardingFormSchema = z.object({
   environments: z.array(EnvironmentItemSchema).length(4),
   
   inviteCode: z.string().min(1),
-  step: z.coerce.number().min(1).max(4),
+  step: z.coerce.number().min(1).max(5),
   imageUrl: z.string().optional(),
 }).superRefine((data, ctx) => {
     const step = data.step;
@@ -99,6 +99,10 @@ const OnboardingFormSchema = z.object({
         data.likedExerciseActivities.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`likedExerciseActivities.${idx}.name`], message: 'This field is required.', code: 'custom'})});
         data.dislikedExerciseActivities.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`dislikedExerciseActivities.${idx}.name`], message: 'This field is required.', code: 'custom'})});
     }
+
+    if (step >= 4) {
+        data.environments.forEach((i, idx) => { if (!i.explanation || i.explanation.trim() === '') ctx.addIssue({path: [`environments.${idx}.explanation`], message: 'This field is required.', code: 'custom'})});
+    }
 });
 type OnboardingFormData = z.infer<typeof OnboardingFormSchema>;
 
@@ -106,7 +110,8 @@ const STEPS = [
   { id: 1, title: "Your Likeness", fields: ["firstName", "gender", "age", "photo"] },
   { id: 2, title: "Food Preferences", fields: ["likedFoods", "dislikedFoods", "likedDrinks", "dislikedDrinks"] },
   { id: 3, title: "Activity Preferences", fields: ["likedFunActivities", "dislikedFunActivities", "likedExerciseActivities", "dislikedExerciseActivities"] },
-  { id: 4, title: "Environments & Generation", fields: ["environments"] },
+  { id: 4, title: "Environments", fields: ["environments"] },
+  { id: 5, title: "All Set!", fields: [] },
 ];
 
 function GenerateButton({ isGenerating, hasBeenGenerated }: { isGenerating: boolean; hasBeenGenerated: boolean }) {
@@ -236,7 +241,7 @@ const StepCard = ({ title, children, imageUrl, state, isGenerating, hasBeenGener
                         <GenerateButton isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated}/>
                         <p className="text-xs text-muted-foreground text-center">
                             {isFinalStep
-                                ? "Press 'Generate' to create your final Me-Gotchi. The asset will be stored and become available in the game."
+                                ? "Press 'Generate' to create your final Me-Gotchi assets. The assets will be stored and become available in the game."
                                 : "Press 'Generate' to preview your Me-Gotchi. You can generate again if you're not happy with the result. The next step will unlock upon successful generation."
                             }
                         </p>
@@ -390,25 +395,45 @@ const Step4 = ({ control }: { control: Control<OnboardingFormData> }) => {
   return (
     <div className="space-y-4">
         <CardDescription>Describe 4 environments the person is normally found in.</CardDescription>
-        {environments.map((item, index) => (
-           <FormField
-            key={item.id}
-            control={control}
-            name={`environments.${index}.explanation`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-base font-semibold">Environment {index + 1}</FormLabel>
-                <FormControl>
-                  <Textarea {...field} placeholder="vibrant colorful children playroom that has toys and games and is appropriate for a 9 years old boy named Leo" className="min-h-[80px] text-base" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {environments.map((item, index) => (
+            <FormField
+                key={item.id}
+                control={control}
+                name={`environments.${index}.explanation`}
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel className="text-base font-semibold">Environment {index + 1}</FormLabel>
+                    <FormControl>
+                    <Textarea {...field} placeholder="vibrant colorful children playroom that has toys and games and is appropriate for a 9 years old boy named Leo" className="min-h-[80px] text-base" />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+            ))}
+        </div>
     </div>
   );
 };
+
+const Step5 = ({ inviteCode }: { inviteCode: string }) => (
+    <Card className="shadow-lg text-center">
+        <CardHeader>
+            <CardTitle className="font-headline text-3xl">All Set!</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center p-6">
+            <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-6" />
+            <p className="text-lg text-muted-foreground max-w-prose">
+                Your Me-Gotchi is ready! To bring it to life, download the Me-Gotchi app from the Google Play Store and enter your invite code when prompted.
+            </p>
+            <div className="mt-8">
+                <p className="text-sm text-muted-foreground">Your Invite Code:</p>
+                <p className="font-mono text-2xl font-bold bg-muted rounded-md py-2 px-4 inline-block mt-1">{inviteCode}</p>
+            </div>
+        </CardContent>
+    </Card>
+);
 
 export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
@@ -445,7 +470,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     },
   });
 
-  const { control, handleSubmit, watch, setError, setValue } = form;
+  const { control, handleSubmit, watch, setError, setValue, trigger } = form;
 
   useEffect(() => {
     setValue('step', currentStep, { shouldValidate: true });
@@ -481,13 +506,20 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   }, [state, toast, setError, setValue]);
 
   const handleNext = async () => {
-    setCurrentStep((prev) => prev + 1);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const isStepValid = await trigger(STEPS[currentStep - 1].fields as any);
+    if (!isStepValid) return;
+
+    if (currentStep < 5) {
+      setCurrentStep((prev) => prev + 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const handlePrevious = () => {
-    setCurrentStep((prev) => prev - 1);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
   
   const onSubmit = async () => {
@@ -510,8 +542,8 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   return (
     <div>
       <div className="mb-8 space-y-2">
-        <Progress value={currentStep * 25} className="w-full" />
-        <p className="text-center text-sm text-muted-foreground font-medium">{`Step ${currentStep} of 4: ${STEPS[currentStep-1].title}`}</p>
+        <Progress value={currentStep * 20} className="w-full" />
+        <p className="text-center text-sm text-muted-foreground font-medium">{`Step ${currentStep} of 5: ${STEPS[currentStep-1].title}`}</p>
       </div>
        <Form {...form}>
         <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -535,18 +567,28 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
                 </StepCard>
             </div>
              <div className={currentStep === 4 ? 'block' : 'hidden'}>
-                <StepCard title="Step 4: Environments & Generation" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} isFinalStep={true} imageUrl={stepImageUrls[4]}>
+                <StepCard title="Step 4: Environments" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} isFinalStep={true} imageUrl={stepImageUrls[4]}>
                     <Step4 control={control} />
                 </StepCard>
             </div>
+            <div className={currentStep === 5 ? 'block' : 'hidden'}>
+                <Step5 inviteCode={inviteCode} />
+            </div>
 
-            <div className="mt-8 flex items-center justify-between">
+            <div className={`mt-8 flex items-center ${currentStep === 5 ? 'justify-center' : 'justify-between'}`}>
                 <Button type="button" variant="outline" onClick={handlePrevious} className={currentStep === 1 ? 'invisible' : 'visible'}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                 </Button>
+                
                 {currentStep < 4 && (
                     <Button type="button" size="lg" onClick={handleNext} disabled={!stepImageUrls[currentStep] || isGenerating}>
                         Next Step <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                )}
+
+                {currentStep === 4 && (
+                     <Button type="button" size="lg" onClick={handleNext} disabled={!stepImageUrls[currentStep] || isGenerating}>
+                        Done <CheckCircle className="ml-2 h-4 w-4" />
                     </Button>
                 )}
             </div>

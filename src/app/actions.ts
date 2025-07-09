@@ -58,7 +58,7 @@ const OnboardingSchema = z.object({
   environments: z.array(EnvironmentItemSchema).length(4),
   
   inviteCode: z.string().min(1, "Invite code is required."),
-  step: z.coerce.number().min(1).max(4),
+  step: z.coerce.number().min(1).max(5),
   imageUrl: z.string().optional(), // This now carries the BASE image URL after step 1
 });
 
@@ -244,52 +244,35 @@ export async function generateMeGotchiAsset(
       }
       return { status: "success", message: "Step 3 preview generated.", imageUrl: step3AssetUrl };
     }
-
-    // Step 4: AI Generation
-    let photoDataUri: string;
-    if (baseImageUrl.startsWith('data:image')) {
-      photoDataUri = baseImageUrl;
-    } else if (isFirebaseEnabled && storage) {
-      const storageRef = ref(storage, baseImageUrl);
-      const blob = await getBlob(storageRef);
-      photoDataUri = `data:${blob.type};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`;
-    } else {
-      throw new Error("Could not retrieve base image for AI generation.");
+    
+    // Step 4: Test case - copy base image to 4 new locations.
+    if (step === 4) {
+      let step4AssetUrl: string;
+      if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
+          const baseImageRef = ref(storage, baseImageUrl);
+          const blob = await getBlob(baseImageRef);
+          
+          let firstUrl: string | null = null;
+          for (let i = 1; i <= 4; i++) {
+              const newPath = `${inviteCode}/background${i}.png`;
+              const newRef = ref(storage, newPath);
+              await uploadBytes(newRef, blob, { contentType: 'image/png' });
+              if (i === 1) {
+                  firstUrl = await getDownloadURL(newRef);
+              }
+          }
+          if (!firstUrl) {
+            throw new Error("Could not get URL for the first background image.");
+          }
+           return { status: "success", message: "Step 4 assets generated.", imageUrl: firstUrl };
+      } else {
+          // In local mode, just return the same data URI.
+          step4AssetUrl = baseImageUrl;
+          return { status: "success", message: "Step 4 preview generated.", imageUrl: step4AssetUrl };
+      }
     }
-    
-    const preferences = formatPreferencesForAI(validationResult.data);
-    
-    const aiResult = await generateAssets({
-      preferences,
-      photoDataUri,
-    });
 
-    if (!aiResult.assetUrl) {
-      throw new Error("AI failed to generate an asset URL.");
-    }
-    
-    const isFinalStep = step === 4;
-    let finalAssetUrlForUI = aiResult.assetUrl;
-
-    if (isFinalStep && isFirebaseEnabled && storage) {
-        const imageResponse = await fetch(aiResult.assetUrl);
-        if (!imageResponse.ok) {
-            throw new Error(`Failed to download the generated asset from AI provider. Status: ${imageResponse.statusText}`);
-        }
-        const imageBlob = await imageResponse.blob();
-
-        const finalAssetPath = `${inviteCode}/me-gotchi-asset.png`;
-        const finalAssetRef = ref(storage, finalAssetPath);
-        await uploadBytes(finalAssetRef, imageBlob, { contentType: 'image/png' });
-
-        finalAssetUrlForUI = await getDownloadURL(finalAssetRef);
-    }
-    
-    return {
-      status: "success",
-      message: isFinalStep ? "Your Me-Gotchi has been created!" : `Step ${step} preview generated successfully!`,
-      imageUrl: finalAssetUrlForUI,
-    };
+    return { status: 'error', message: 'Invalid step provided.' };
 
   } catch (error) {
     console.error(`Error in generateMeGotchiAsset (Step ${step}):`, error);
