@@ -13,7 +13,7 @@ export default function Home() {
             </div>
 
             <h1 className="font-headline text-5xl md:text-7xl font-bold text-foreground">
-                Me-Gotchi Web
+                Me-gotchi Setup
             </h1>
             <p className="mt-4 max-w-xl text-lg text-muted-foreground">
                 Welcome! Enter your exclusive invite code to begin your journey and create a personalized digital companion.

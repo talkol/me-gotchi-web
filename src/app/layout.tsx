@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "Me-Gotchi Web",
-  description: "Create your personalized digital companion.",
+  title: "Me-gotchi Setup",
+  description: "Create a personalized digital companion.",
 };
 
 export default function RootLayout({

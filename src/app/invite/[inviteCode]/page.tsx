@@ -20,7 +20,7 @@ export default function OnboardingPage({
       </div>
       <div className="text-center">
         <h1 className="font-headline text-4xl md:text-5xl font-bold">
-          Create Your Me-Gotchi
+          Create Me-gotchi
         </h1>
         <p className="mt-2 text-muted-foreground">
           Let&apos;s personalize your digital companion.

@@ -110,7 +110,7 @@ const OnboardingFormSchema = z.object({
 type OnboardingFormData = z.infer<typeof OnboardingFormSchema>;
 
 const STEPS = [
-  { id: 1, title: "Your Likeness", fields: ["firstName", "gender", "age", "photo"] },
+  { id: 1, title: "Appearance", fields: ["firstName", "gender", "age", "photo"] },
   { id: 2, title: "Food Preferences", fields: ["likedFoods", "dislikedFoods", "likedDrinks", "dislikedDrinks"] },
   { id: 3, title: "Activity Preferences", fields: ["likedFunActivities", "dislikedFunActivities", "likedExerciseActivities", "dislikedExerciseActivities"] },
   { id: 4, title: "Environments", fields: ["environments"] },
@@ -238,14 +238,14 @@ const StepCard = ({ title, children, imageUrl, state, isGenerating, hasBeenGener
             {children}
             <Separator className="my-8" />
              <div>
-                <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
+                <h3 className="text-xl font-headline mb-4">Result</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     <div className="flex flex-col justify-start h-full space-y-4">
                         <GenerateButton isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated}/>
                         <p className="text-xs text-muted-foreground text-left">
                             {isFinalStep
                                 ? "Press 'Generate' to create your final Me-Gotchi assets. The assets will be stored and become available in the game."
-                                : "Press 'Generate' to preview your Me-Gotchi. You can generate again if you're not happy with the result. The next step will unlock upon successful generation."
+                                : "Press 'Generate' to use some AI magic and generate your unique game assets. You can generate again if you're not happy with the result. The next step will unlock upon successful generation."
                             }
                         </p>
                     </div>
@@ -274,7 +274,7 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
             <FormField control={control} name="firstName" render={({ field }) => (
                 <FormItem>
                     <FormLabel className="text-base font-semibold">First Name</FormLabel>
-                    <FormControl><Input placeholder="Your first name" {...field} value={field.value ?? ''} className="text-base"/></FormControl>
+                    <FormControl><Input placeholder="eg: Leo" {...field} value={field.value ?? ''} className="text-base"/></FormControl>
                     <FormMessage />
                 </FormItem>
             )} />
@@ -282,7 +282,7 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
                 <FormItem>
                     <FormLabel className="text-base font-semibold">Gender</FormLabel>
                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger></FormControl>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
                         <SelectContent>
                             <SelectItem value="male">Male</SelectItem>
                             <SelectItem value="female">Female</SelectItem>
@@ -294,14 +294,14 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
               <FormField control={control} name="age" render={({ field }) => (
                 <FormItem>
                     <FormLabel className="text-base font-semibold">Age</FormLabel>
-                    <FormControl><Input type="number" placeholder="e.g., 25" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} className="text-base"/></FormControl>
+                    <FormControl><Input type="number" placeholder="eg: 8" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} className="text-base"/></FormControl>
                     <FormMessage />
                 </FormItem>
             )} />
         </div>
         <FormField control={control} name="photo" render={({ field: { onChange, value, ...rest }, fieldState }) => (
             <FormItem>
-              <FormLabel className="text-base font-semibold">Your Photo</FormLabel>
+              <FormLabel className="text-base font-semibold">Face Photo</FormLabel>
               <FormControl>
                 <div className="relative flex items-center justify-center w-full h-full min-h-[256px]">
                   <label htmlFor="dropzone-file" className={`flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${fieldState.error ? 'border-destructive' : 'border-border'}`}>
@@ -311,7 +311,7 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
                         <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                        <p className="text-xs text-muted-foreground">PNG, JPG or WEBP (MAX. 4MB)</p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG or WEBP (MAX. 4MB)<br>Front-looking photo of face and upper body</br></p>
                       </div>
                     )}
                     <input id="dropzone-file" type="file" className="hidden" onChange={(e) => onChange(e.target.files?.[0])} {...rest} accept="image/png, image/jpeg, image/webp" />
@@ -332,27 +332,27 @@ const Step2 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
   return (
     <div className="space-y-6">
         <div>
-            <h3 className="font-semibold text-lg mb-2">Foods You Like (3)</h3>
+            <h3 className="font-semibold text-lg mb-2">Foods Liked (3)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {likedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFoods" placeholderName="PIZZA" placeholderDescription="A single slice of pizza with pepperoni on top" />)}
+                {likedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFoods" placeholderName="eg: PIZZA" placeholderDescription="eg: A single slice of pizza with pepperoni on top" />)}
             </div>
         </div>
         <div>
-            <h3 className="font-semibold text-lg mb-2">Foods You Dislike (3)</h3>
+            <h3 className="font-semibold text-lg mb-2">Foods Disliked (3)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dislikedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFoods" placeholderName="BROCCOLI" placeholderDescription="Steamed broccoli florets" />)}
+                {dislikedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFoods" placeholderName="eg: BROCCOLI" placeholderDescription="Steamed broccoli florets" />)}
             </div>
         </div>
         <div>
-            <h3 className="font-semibold text-lg mb-2">Drinks You Like (2)</h3>
+            <h3 className="font-semibold text-lg mb-2">Drinks Liked (2)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {likedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedDrinks" placeholderName="APPLE JUICE" placeholderDescription="A glass of apple juice without any labels" />)}
+                {likedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedDrinks" placeholderName="eg: APPLE JUICE" placeholderDescription="A glass of apple juice without any labels" />)}
             </div>
         </div>
          <div>
-            <h3 className="font-semibold text-lg mb-2">Drink You Dislike (1)</h3>
+            <h3 className="font-semibold text-lg mb-2">Drinks Disliked (1)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dislikedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedDrinks" placeholderName="MILK" placeholderDescription="A glass of plain milk" />)}
+                {dislikedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedDrinks" placeholderName="eg: MILK" placeholderDescription="A glass of plain milk" />)}
             </div>
         </div>
     </div>
@@ -366,27 +366,27 @@ const Step3 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
   return (
     <div className="space-y-6">
         <div>
-            <h3 className="font-semibold text-lg mb-2">Fun Activities You Like (3)</h3>
+            <h3 className="font-semibold text-lg mb-2">Leisure Activities Liked (3)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {likedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFunActivities" placeholderName="PLAYSTATION" placeholderDescription="A white ps5 console standing upright" />)}
+                {likedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFunActivities" placeholderName="eg: PLAYSTATION" placeholderDescription="A white ps5 console standing upright" />)}
             </div>
         </div>
         <div>
-            <h3 className="font-semibold text-lg mb-2">Fun Activities You Dislike (2)</h3>
+            <h3 className="font-semibold text-lg mb-2">Leisure Activities Disliked (2)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dislikedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFunActivities" placeholderName="READING" placeholderDescription="An open book on a table" />)}
+                {dislikedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFunActivities" placeholderName="eg: READING" placeholderDescription="An open book on a table" />)}
             </div>
         </div>
         <div>
-            <h3 className="font-semibold text-lg mb-2">Exercise You Like (2)</h3>
+            <h3 className="font-semibold text-lg mb-2">Exercise Activities Liked (2)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {likedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedExerciseActivities" placeholderName="FOOTBALL" placeholderDescription="A soccer ball" />)}
+                {likedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedExerciseActivities" placeholderName="eg: FOOTBALL" placeholderDescription="A soccer ball" />)}
             </div>
         </div>
         <div>
-            <h3 className="font-semibold text-lg mb-2">Exercise You Dislike (1)</h3>
+            <h3 className="font-semibold text-lg mb-2">Exercise Activities Disliked (1)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dislikedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedExerciseActivities" placeholderName="RUNNING" placeholderDescription="A person running on a treadmill" />)}
+                {dislikedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedExerciseActivities" placeholderName="eg: RUNNING" placeholderDescription="A person running from profile view" />)}
             </div>
         </div>
     </div>
@@ -397,7 +397,7 @@ const Step4 = ({ control }: { control: Control<OnboardingFormData> }) => {
   const { fields: environments } = useFieldArray({ control, name: 'environments' });
   return (
     <div className="space-y-4">
-        <CardDescription>Describe 4 environments the person is normally found in.</CardDescription>
+        <CardDescription>Describe environments the character will normally visit.</CardDescription>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {environments.map((item, index) => (
             <FormField
@@ -408,7 +408,7 @@ const Step4 = ({ control }: { control: Control<OnboardingFormData> }) => {
                 <FormItem>
                     <FormLabel className="text-base font-semibold">Environment {index + 1}</FormLabel>
                     <FormControl>
-                    <Textarea {...field} placeholder="vibrant colorful children playroom that has toys and games and is appropriate for a 9 years old boy named Leo" className="min-h-[80px] text-base" />
+                    <Textarea {...field} placeholder="eg: vibrant colorful children playroom that has toys and games and is appropriate for a 9 years old boy named Leo" className="min-h-[80px] text-base" />
                     </FormControl>
                     <FormMessage />
                 </FormItem>
@@ -428,7 +428,7 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => (
         <CardContent className="flex flex-col items-center p-6">
             <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-6" />
             <p className="text-lg text-muted-foreground max-w-prose">
-                Your Me-Gotchi is ready! To bring it to life, download the Me-Gotchi app from the Google Play Store and enter your invite code when prompted.
+                Your unique Me-gotchi is ready! To bring it to life, download the Me-gotchi app from the Google Play Store and enter your invite code when prompted.
             </p>
             <div className="mt-8">
                 <p className="text-sm text-muted-foreground">Your Invite Code:</p>
