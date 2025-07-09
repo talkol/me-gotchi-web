@@ -197,8 +197,7 @@ const Step1 = ({ control, watch, state }: { control: Control<OnboardingFormData>
                     </FormItem>
                   )}
                 />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
+                 <FormField
                     control={control}
                     name="gender"
                     render={({ field }) => (
@@ -230,7 +229,6 @@ const Step1 = ({ control, watch, state }: { control: Control<OnboardingFormData>
                       </FormItem>
                     )}
                   />
-                </div>
             </div>
             <FormField
               control={control}
@@ -247,7 +245,7 @@ const Step1 = ({ control, watch, state }: { control: Control<OnboardingFormData>
                         }`}
                       >
                         {previewUrl ? (
-                          <Image src={previewUrl} alt="Photo preview" layout="fill" objectFit="contain" className="rounded-lg p-2" />
+                          <Image src={previewUrl} alt="Photo preview" fill objectFit="contain" className="rounded-lg p-2" />
                         ) : (
                           <div className="flex flex-col items-center justify-center pt-5 pb-6">
                             <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
@@ -275,8 +273,18 @@ const Step1 = ({ control, watch, state }: { control: Control<OnboardingFormData>
         </div>
         <Separator className="my-8" />
         <div>
-            <h3 className="text-xl font-headline mb-4 text-center md:text-left">Generated Asset</h3>
-            <AssetPreview state={state} isFinalStep={false} />
+            <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                 <div className="flex flex-col justify-center h-full space-y-4">
+                    <Button type="button" size="lg" className="w-full font-bold" disabled>
+                        <Wand2 className="mr-2 h-4 w-4" /> Generate
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                        Complete all steps to enable asset generation. Your Me-Gotchi will be created using AI based on all your answers.
+                    </p>
+                </div>
+                <AssetPreview state={state} isFinalStep={false} />
+            </div>
         </div>
       </CardContent>
     </Card>
@@ -319,8 +327,18 @@ const Step2 = ({ control, watch, state }: { control: Control<OnboardingFormData>
         </div>
         <Separator className="my-8" />
         <div>
-            <h3 className="text-xl font-headline mb-4 text-center md:text-left">Generated Asset</h3>
-            <AssetPreview state={state} isFinalStep={false} />
+            <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                 <div className="flex flex-col justify-center h-full space-y-4">
+                    <Button type="button" size="lg" className="w-full font-bold" disabled>
+                        <Wand2 className="mr-2 h-4 w-4" /> Generate
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                        Complete all steps to enable asset generation. Your Me-Gotchi will be created using AI based on all your answers.
+                    </p>
+                </div>
+                <AssetPreview state={state} isFinalStep={false} />
+            </div>
         </div>
       </CardContent>
     </Card>
@@ -363,8 +381,18 @@ const Step3 = ({ control, watch, state }: { control: Control<OnboardingFormData>
         </div>
         <Separator className="my-8" />
         <div>
-            <h3 className="text-xl font-headline mb-4 text-center md:text-left">Generated Asset</h3>
-            <AssetPreview state={state} isFinalStep={false} />
+           <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                 <div className="flex flex-col justify-center h-full space-y-4">
+                    <Button type="button" size="lg" className="w-full font-bold" disabled>
+                        <Wand2 className="mr-2 h-4 w-4" /> Generate
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                        Complete all steps to enable asset generation. Your Me-Gotchi will be created using AI based on all your answers.
+                    </p>
+                </div>
+                <AssetPreview state={state} isFinalStep={false} />
+            </div>
         </div>
       </CardContent>
     </Card>
@@ -401,13 +429,18 @@ const Step4 = ({ control, state }: { control: Control<OnboardingFormData>, state
         </div>
         <Separator className="my-8" />
         <div>
-            <h3 className="text-xl font-headline mb-4 text-center">Generated Asset</h3>
-            <AssetPreview state={state} isFinalStep={true} />
+            <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <div className="flex flex-col justify-center h-full space-y-4">
+                    <SubmitButton isSuccess={state.status === 'success'} />
+                    <p className="text-xs text-muted-foreground text-center">
+                        Press "Generate" to create your Me-Gotchi using AI. The final asset will be stored and become available in the game. You can generate again if you're not happy with the result.
+                    </p>
+                </div>
+                <AssetPreview state={state} isFinalStep={true} />
+            </div>
         </div>
       </CardContent>
-       <CardFooter>
-            <SubmitButton isSuccess={state.status === 'success'} />
-        </CardFooter>
     </Card>
   );
 };
@@ -501,6 +534,3 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     </div>
   );
 }
-
-    
-    
