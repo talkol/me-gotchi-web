@@ -79,7 +79,10 @@ const OnboardingFormSchema = z.object({
             ctx.addIssue({ path: ['age'], message: 'Age is required.', code: 'custom'});
         }
         if (!(data.photo instanceof File) || data.photo.size === 0) {
-            ctx.addIssue({ path: ['photo'], message: 'A photo is required.', code: 'custom'});
+            // Only require a photo if one hasn't been uploaded yet (i.e., imageUrl is not set)
+            if (!data.imageUrl) {
+                ctx.addIssue({ path: ['photo'], message: 'A photo is required.', code: 'custom'});
+            }
         } else {
              if (data.photo.size > 4 * 1024 * 1024) ctx.addIssue({ path: ['photo'], message: 'Photo must be less than 4MB.', code: 'custom'});
              if (!["image/jpeg", "image/png", "image/webp"].includes(data.photo.type)) ctx.addIssue({ path: ['photo'], message: 'Only .jpg, .png, and .webp formats are supported.', code: 'custom'});
@@ -470,11 +473,15 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     },
   });
 
-  const { control, handleSubmit, watch, setError, setValue, trigger } = form;
+  const { control, handleSubmit, watch, setError, setValue } = form;
 
   useEffect(() => {
     setValue('step', currentStep, { shouldValidate: true });
   }, [currentStep, setValue]);
+  
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentStep]);
 
   useEffect(() => {
     if (state.status === "error") {
@@ -508,14 +515,12 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const handleNext = () => {
     if (currentStep < 5) {
       setCurrentStep((prev) => prev + 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > 1) {
       setCurrentStep((prev) => prev - 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
   
