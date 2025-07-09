@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { generateAssets } from "@/ai/flows/generate-assets";
 import { storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, getBlob } from "firebase/storage";
 
 // Define schemas for reusable parts
 const FoodItemSchema = z.object({
@@ -167,11 +167,8 @@ export async function generateMeGotchiAsset(
     environments: parseArrayFromFormData(formData, 'environments', 4, true),
   };
   
-  const step = Number(rawFormData.step);
-  const isFinalStep = step === 4;
-
+  // 1. Validate form data
   const validationResult = OnboardingSchema.partial().safeParse(rawFormData);
-  
   if (!validationResult.success) {
     return {
       status: "error",
@@ -179,83 +176,67 @@ export async function generateMeGotchiAsset(
       validationErrors: validationResult.error.flatten().fieldErrors,
     };
   }
-
-  const { photo, inviteCode } = validationResult.data;
-  // This check now only applies to step 1. On other steps, we assume the photo exists in storage.
-  // A more robust solution would be to fetch it from storage on steps 2-4.
-  if (step === 1 && (!photo || !(photo instanceof File))) {
-      return { status: 'error', message: 'A photo is required for generation.' };
-  }
-  if (!inviteCode) {
-    return { status: "error", message: "Invite code is missing." };
-  }
   
-  // Step 1: Upload the user's photo to Firebase Storage.
-  if (step === 1) {
-    if (!photo) return { status: 'error', message: 'Photo is missing for step 1' };
-    try {
-      const storagePath = `${inviteCode}/face-atlas.png`;
-      const storageRef = ref(storage, storagePath);
-      await uploadBytes(storageRef, photo, { contentType: photo.type });
-      const finalUrl = await getDownloadURL(storageRef);
-      return {
-        status: "success",
-        message: "Photo uploaded successfully!",
-        imageUrl: finalUrl,
-      };
-    } catch (error) {
-      console.error("Error uploading photo for step 1:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "An unknown error occurred.";
-      return {
-        status: "error",
-        message: `Failed to upload photo. ${errorMessage}`,
-      };
-    }
+  const { inviteCode, step, photo } = validationResult.data;
+  if (!inviteCode || !step) {
+      return { status: "error", message: "Invite code or step is missing."}
   }
-  
-  // For steps 2+, photo won't be in formData. A robust implementation would fetch it from storage.
-  // For now, we expect the AI to fail if the photo isn't present.
-  if (!photo) {
-    return { status: "error", message: "Photo not found for generation. Please complete step 1." };
-  }
-
-  const preferences = formatPreferencesForAI(validationResult.data);
 
   try {
-    const buffer = Buffer.from(await photo.arrayBuffer());
-    const photoDataUri = `data:${photo.type};base64,${buffer.toString("base64")}`;
+    let photoDataUri: string;
+    const storagePath = `${inviteCode}/face-atlas.png`;
+    const storageRef = ref(storage, storagePath);
 
+    // 2. Handle photo: Upload on step 1, fetch from storage on subsequent steps.
+    if (step === 1) {
+      if (!photo || !(photo instanceof File)) {
+        throw new Error("A photo must be provided in step 1.");
+      }
+      await uploadBytes(storageRef, photo, { contentType: photo.type });
+      const buffer = Buffer.from(await photo.arrayBuffer());
+      photoDataUri = `data:${photo.type};base64,${buffer.toString("base64")}`;
+    } else {
+      const blob = await getBlob(storageRef);
+      const buffer = Buffer.from(await blob.arrayBuffer());
+      photoDataUri = `data:${blob.type};base64,${buffer.toString("base64")}`;
+    }
+    
+    // 3. Generate preferences for AI based on all submitted data
+    const preferences = formatPreferencesForAI(validationResult.data);
+    
+    // 4. Call AI to generate asset
     const aiResult = await generateAssets({
       preferences,
       photoDataUri,
     });
 
     if (!aiResult.assetUrl) {
-      throw new Error("AI failed to generate an asset.");
+      throw new Error("AI failed to generate an asset URL.");
     }
     
-    // If it's the final step, upload to storage and return the public URL
+    // 5. Handle the result based on the current step
+    const isFinalStep = step === 4;
     if (isFinalStep) {
+        // On final step, upload the AI asset to its final destination
         const imageResponse = await fetch(aiResult.assetUrl);
         if (!imageResponse.ok) {
-            throw new Error("Failed to download the generated asset from AI provider.");
+            throw new Error(`Failed to download the generated asset from AI provider. Status: ${imageResponse.statusText}`);
         }
         const imageBlob = await imageResponse.blob();
 
-        const storagePath = `${inviteCode}/me-gotchi-asset.png`;
-        const storageRef = ref(storage, storagePath);
-        await uploadBytes(storageRef, imageBlob, { contentType: 'image/png' });
+        const finalAssetPath = `${inviteCode}/me-gotchi-asset.png`;
+        const finalAssetRef = ref(storage, finalAssetPath);
+        await uploadBytes(finalAssetRef, imageBlob, { contentType: 'image/png' });
 
-        const finalUrl = await getDownloadURL(storageRef);
-
+        const finalUrl = await getDownloadURL(finalAssetRef);
         return {
           status: "success",
           message: "Your Me-Gotchi has been created!",
           imageUrl: finalUrl,
         };
+
     } else {
-        // For intermediate steps, return the data URI directly for preview
+        // For intermediate steps, return the AI-generated data URI directly for preview
         return {
             status: "success",
             message: `Step ${step} preview generated successfully!`,
@@ -264,11 +245,11 @@ export async function generateMeGotchiAsset(
     }
 
   } catch (error) {
-    console.error("Error generating asset:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    console.error("Error in generateMeGotchiAsset:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during asset generation.";
     return {
       status: "error",
-      message: `Failed to create asset. ${errorMessage}`,
+      message: `Action failed: ${errorMessage}`,
     };
   }
 }
