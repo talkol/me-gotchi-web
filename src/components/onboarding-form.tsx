@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo, useActionState, useRef } from "react";
@@ -74,11 +75,47 @@ function SubmitButton({ isSuccess }: { isSuccess: boolean }) {
       ) : isSuccess ? (
         <><CheckCircle className="mr-2 h-4 w-4" /> Done!</>
       ) : (
-        <><Wand2 className="mr-2 h-4 w-4" /> Generate my Me-Gotchi!</>
+        <><Wand2 className="mr-2 h-4 w-4" /> Generate</>
       )}
     </Button>
   );
 }
+
+const AssetPreviewPane = ({ state, isFinalStep = false }: { state: FormState; isFinalStep?: boolean }) => {
+    const { pending } = useFormStatus();
+
+    const AssetDisplay = useMemo(() => {
+        if (state.status === 'success' && state.imageUrl) {
+            return <Image src={state.imageUrl} alt="Generated Me-Gotchi Asset" width={512} height={512} className="rounded-lg object-cover w-full h-full" data-ai-hint="avatar character" />;
+        }
+        if (isFinalStep && pending) {
+            return <div className="w-full h-full flex flex-col items-center justify-center space-y-4 p-8 bg-accent/30 rounded-lg"><Skeleton className="h-full w-full rounded-lg" /><div className="flex items-center space-x-2 text-foreground"><RefreshCw className="animate-spin h-5 w-5" /><p className="font-headline">AI is creating magic...</p></div></div>;
+        }
+        if (isFinalStep && state.status === 'error') {
+            return <div className="w-full h-full flex flex-col items-center justify-center text-destructive p-4"><AlertCircle className="h-16 w-16" /><p className="mt-4 font-semibold text-center">{state.message}</p></div>
+        }
+        return <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4"><Sparkles className="h-16 w-16" /><p className="mt-4 font-semibold text-center">Your generated asset will appear here</p></div>;
+    }, [state, pending, isFinalStep]);
+
+    return (
+        <Card className="shadow-lg flex flex-col">
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl">Generated Asset</CardTitle>
+                <CardDescription>A preview of your Me-Gotchi will appear here after generation.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <div className="w-full aspect-square bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden">
+                    {AssetDisplay}
+                </div>
+            </CardContent>
+            {isFinalStep && (
+                <CardFooter>
+                    <SubmitButton isSuccess={state.status === 'success'} />
+                </CardFooter>
+            )}
+        </Card>
+    );
+};
 
 const PreferenceItem = ({
   control, name, index, watch, placeholderName, placeholderDescription,
@@ -138,7 +175,7 @@ const PreferenceItem = ({
   );
 };
 
-const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData> }) => {
+const Step1 = ({ control, watch, state }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData>, state: FormState }) => {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const photoFile = watch("photo");
     useEffect(() => {
@@ -149,192 +186,188 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
         }
         setPreviewUrl(null);
     }, [photoFile]);
+
   return (
-    <Card className="shadow-lg">
-      <CardHeader><CardTitle className="font-headline text-2xl">Step 1: Your Likeness</CardTitle></CardHeader>
-      <CardContent className="space-y-6">
-        <FormField
-          control={control}
-          name="firstName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-base font-semibold">First Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Your first name" {...field} className="text-base"/>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={control}
-            name="gender"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-base font-semibold">Gender</FormLabel>
-                 <Select onValueChange={field.onChange} defaultValue={field.value}>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="shadow-lg">
+          <CardHeader><CardTitle className="font-headline text-2xl">Step 1: Your Likeness</CardTitle></CardHeader>
+          <CardContent className="space-y-6">
+            <FormField
+              control={control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base font-semibold">First Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your first name" {...field} className="text-base"/>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-semibold">Gender</FormLabel>
+                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={control}
+                name="age"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-semibold">Age</FormLabel>
                     <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                      <Input type="number" placeholder="e.g., 25" {...field} className="text-base"/>
                     </FormControl>
-                    <SelectContent>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                    </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={control}
-            name="age"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-base font-semibold">Age</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="e.g., 25" {...field} className="text-base"/>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <FormField
-          control={control}
-          name="photo"
-          render={({ field: { onChange, value, ...rest }, fieldState }) => (
-            <FormItem>
-              <FormLabel className="text-base font-semibold">Your Photo</FormLabel>
-              <FormControl>
-                <div className="relative flex items-center justify-center w-full">
-                  <label
-                    htmlFor="dropzone-file"
-                    className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${
-                      fieldState.invalid ? 'border-destructive' : 'border-border'
-                    }`}
-                  >
-                    {previewUrl ? (
-                      <Image src={previewUrl} alt="Photo preview" layout="fill" objectFit="contain" className="rounded-lg p-2" />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
-                        <p className="mb-2 text-sm text-muted-foreground">
-                          <span className="font-semibold">Click to upload</span> or drag and drop
-                        </p>
-                        <p className="text-xs text-muted-foreground">PNG, JPG or WEBP (MAX. 4MB)</p>
-                      </div>
-                    )}
-                    <input
-                      id="dropzone-file"
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => onChange(e.target.files?.[0])}
-                      {...rest}
-                      accept="image/png, image/jpeg, image/webp"
-                    />
-                  </label>
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </CardContent>
-    </Card>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={control}
+              name="photo"
+              render={({ field: { onChange, value, ...rest }, fieldState }) => (
+                <FormItem>
+                  <FormLabel className="text-base font-semibold">Your Photo</FormLabel>
+                  <FormControl>
+                    <div className="relative flex items-center justify-center w-full">
+                      <label
+                        htmlFor="dropzone-file"
+                        className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${
+                          fieldState.invalid ? 'border-destructive' : 'border-border'
+                        }`}
+                      >
+                        {previewUrl ? (
+                          <Image src={previewUrl} alt="Photo preview" layout="fill" objectFit="contain" className="rounded-lg p-2" />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
+                            <p className="mb-2 text-sm text-muted-foreground">
+                              <span className="font-semibold">Click to upload</span> or drag and drop
+                            </p>
+                            <p className="text-xs text-muted-foreground">PNG, JPG or WEBP (MAX. 4MB)</p>
+                          </div>
+                        )}
+                        <input
+                          id="dropzone-file"
+                          type="file"
+                          className="hidden"
+                          onChange={(e) => onChange(e.target.files?.[0])}
+                          {...rest}
+                          accept="image/png, image/jpeg, image/webp"
+                        />
+                      </label>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+        <AssetPreviewPane state={state} />
+    </div>
   );
 };
-const Step2 = ({ control, watch }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData>}) => {
+const Step2 = ({ control, watch, state }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData>, state: FormState}) => {
     const { fields: likedFoods } = useFieldArray({ control, name: 'likedFoods' });
     const { fields: dislikedFoods } = useFieldArray({ control, name: 'dislikedFoods' });
     const { fields: likedDrinks } = useFieldArray({ control, name: 'likedDrinks' });
     const { fields: dislikedDrinks } = useFieldArray({ control, name: 'dislikedDrinks' });
   return (
-    <Card className="shadow-lg">
-      <CardHeader><CardTitle className="font-headline text-2xl">Step 2: Food Preferences</CardTitle></CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-            <h3 className="font-semibold text-lg mb-2">Foods You Like (3)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {likedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFoods" placeholderName="PIZZA" placeholderDescription="A single slice of pizza with pepperoni on top" />)}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="shadow-lg">
+          <CardHeader><CardTitle className="font-headline text-2xl">Step 2: Food Preferences</CardTitle></CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+                <h3 className="font-semibold text-lg mb-2">Foods You Like (3)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {likedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFoods" placeholderName="PIZZA" placeholderDescription="A single slice of pizza with pepperoni on top" />)}
+                </div>
             </div>
-        </div>
-        <div>
-            <h3 className="font-semibold text-lg mb-2">Foods You Dislike (3)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {dislikedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFoods" placeholderName="PIZZA" placeholderDescription="A single slice of pizza with pepperoni on top" />)}
+            <div>
+                <h3 className="font-semibold text-lg mb-2">Foods You Dislike (3)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {dislikedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFoods" placeholderName="BROCCOLI" placeholderDescription="Steamed broccoli florets" />)}
+                </div>
             </div>
-        </div>
-        <div>
-            <h3 className="font-semibold text-lg mb-2">Drinks You Like (2)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {likedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedDrinks" placeholderName="APPLE JUICE" placeholderDescription="A glass of apple juice without any labels" />)}
+            <div>
+                <h3 className="font-semibold text-lg mb-2">Drinks You Like (2)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {likedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedDrinks" placeholderName="APPLE JUICE" placeholderDescription="A glass of apple juice without any labels" />)}
+                </div>
             </div>
-        </div>
-         <div>
-            <h3 className="font-semibold text-lg mb-2">Drink You Dislike (1)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                {dislikedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedDrinks" placeholderName="APPLE JUICE" placeholderDescription="A glass of apple juice without any labels" />)}
+             <div>
+                <h3 className="font-semibold text-lg mb-2">Drink You Dislike (1)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    {dislikedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedDrinks" placeholderName="MILK" placeholderDescription="A glass of plain milk" />)}
+                </div>
             </div>
-        </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+        <AssetPreviewPane state={state} />
+    </div>
   );
 };
-const Step3 = ({ control, watch }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData> }) => {
+const Step3 = ({ control, watch, state }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData>, state: FormState }) => {
     const { fields: likedFun } = useFieldArray({ control, name: 'likedFunActivities' });
     const { fields: dislikedFun } = useFieldArray({ control, name: 'dislikedFunActivities' });
     const { fields: likedExercise } = useFieldArray({ control, name: 'likedExerciseActivities' });
     const { fields: dislikedExercise } = useFieldArray({ control, name: 'dislikedExerciseActivities' });
   return (
-    <Card className="shadow-lg">
-      <CardHeader><CardTitle className="font-headline text-2xl">Step 3: Activity Preferences</CardTitle></CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-            <h3 className="font-semibold text-lg mb-2">Fun Activities You Like (3)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {likedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFunActivities" placeholderName="PLAYSTATION" placeholderDescription="A white ps5 console standing upright" />)}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="shadow-lg">
+          <CardHeader><CardTitle className="font-headline text-2xl">Step 3: Activity Preferences</CardTitle></CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+                <h3 className="font-semibold text-lg mb-2">Fun Activities You Like (3)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {likedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFunActivities" placeholderName="PLAYSTATION" placeholderDescription="A white ps5 console standing upright" />)}
+                </div>
             </div>
-        </div>
-        <div>
-            <h3 className="font-semibold text-lg mb-2">Fun Activities You Dislike (2)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dislikedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFunActivities" placeholderName="PLAYSTATION" placeholderDescription="A white ps5 console standing upright" />)}
+            <div>
+                <h3 className="font-semibold text-lg mb-2">Fun Activities You Dislike (2)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {dislikedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFunActivities" placeholderName="READING" placeholderDescription="An open book on a table" />)}
+                </div>
             </div>
-        </div>
-        <div>
-            <h3 className="font-semibold text-lg mb-2">Exercise You Like (2)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {likedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedExerciseActivities" placeholderName="FOOTBALL" placeholderDescription="A soccer ball" />)}
+            <div>
+                <h3 className="font-semibold text-lg mb-2">Exercise You Like (2)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {likedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedExerciseActivities" placeholderName="FOOTBALL" placeholderDescription="A soccer ball" />)}
+                </div>
             </div>
-        </div>
-        <div>
-            <h3 className="font-semibold text-lg mb-2">Exercise You Dislike (1)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                {dislikedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedExerciseActivities" placeholderName="FOOTBALL" placeholderDescription="A soccer ball" />)}
+            <div>
+                <h3 className="font-semibold text-lg mb-2">Exercise You Dislike (1)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    {dislikedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedExerciseActivities" placeholderName="RUNNING" placeholderDescription="A person running on a treadmill" />)}
+                </div>
             </div>
-        </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+        <AssetPreviewPane state={state} />
+    </div>
   );
 };
 
 const Step4 = ({ control, state }: { control: Control<OnboardingFormData>, state: FormState }) => {
   const { fields: environments } = useFieldArray({ control, name: 'environments' });
-  const { pending } = useFormStatus();
-
-  const AssetPreview = useMemo(() => {
-    if (state.status === 'success' && state.imageUrl) {
-        return <Image src={state.imageUrl} alt="Generated Me-Gotchi Asset" width={512} height={512} className="rounded-lg object-cover w-full h-full" data-ai-hint="avatar character" />;
-    }
-    if (pending) {
-        return <div className="w-full h-full flex flex-col items-center justify-center space-y-4 p-8 bg-accent/30 rounded-lg"><Skeleton className="h-full w-full rounded-lg" /><div className="flex items-center space-x-2 text-foreground"><RefreshCw className="animate-spin h-5 w-5" /><p className="font-headline">AI is creating magic...</p></div></div>;
-    }
-    if (state.status === 'error') {
-        return <div className="w-full h-full flex flex-col items-center justify-center text-destructive p-4"><AlertCircle className="h-16 w-16" /><p className="mt-4 font-semibold text-center">{state.message}</p></div>
-    }
-    return <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4"><Sparkles className="h-16 w-16" /><p className="mt-4 font-semibold text-center">Your generated asset will appear here</p></div>;
-  }, [state, pending]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -362,20 +395,7 @@ const Step4 = ({ control, state }: { control: Control<OnboardingFormData>, state
             ))}
           </CardContent>
         </Card>
-        <Card className="shadow-lg flex flex-col">
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl">Generate Asset</CardTitle>
-            <CardDescription>Your unique Me-Gotchi asset will be generated here.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-grow">
-            <div className="w-full aspect-square bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden">
-                {AssetPreview}
-            </div>
-          </CardContent>
-          <CardFooter>
-             <SubmitButton isSuccess={state.status === 'success'} />
-          </CardFooter>
-        </Card>
+        <AssetPreviewPane state={state} isFinalStep={true} />
     </div>
   );
 };
@@ -395,7 +415,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     defaultValues: {
       firstName: "",
       gender: undefined,
-      age: '',
+      age: undefined,
       photo: undefined,
       inviteCode: inviteCode,
       likedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
@@ -410,7 +430,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     },
   });
 
-  const { control, handleSubmit, trigger, watch } = form;
+  const { control, handleSubmit, trigger, watch, setError } = form;
 
   useEffect(() => {
     if (state.status === "error") {
@@ -419,17 +439,16 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         title: "Oh no! Something went wrong.",
         description: state.message || "Please check the form for errors.",
       });
-      // This is a bit of a hack to get server errors to show up on the client
       if (state.validationErrors) {
         Object.entries(state.validationErrors).forEach(([field, error]) => {
-           form.setError(field as any, { type: 'server', message: (error as any)._errors[0]});
+           setError(field as any, { type: 'server', message: (error as any)._errors[0]});
         });
       }
     }
     if (state.status === "success") {
       toast({ title: "Success!", description: state.message });
     }
-  }, [state, toast, form]);
+  }, [state, toast, setError]);
 
   const handleNext = async () => {
     const fields = STEPS[currentStep - 1].fields;
@@ -448,11 +467,11 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       </div>
        <Form {...form}>
         <form ref={formRef} action={formAction} onSubmit={handleSubmit(() => formAction(new FormData(formRef.current!)))} className="space-y-8">
-            <input type="hidden" name="inviteCode" value={inviteCode} />
+            <input type="hidden" {...form.register("inviteCode")} />
 
-            <div className={currentStep === 1 ? 'block' : 'hidden'}><Step1 control={control} watch={watch} /></div>
-            <div className={currentStep === 2 ? 'block' : 'hidden'}><Step2 control={control} watch={watch} /></div>
-            <div className={currentStep === 3 ? 'block' : 'hidden'}><Step3 control={control} watch={watch} /></div>
+            <div className={currentStep === 1 ? 'block' : 'hidden'}><Step1 control={control} watch={watch} state={state} /></div>
+            <div className={currentStep === 2 ? 'block' : 'hidden'}><Step2 control={control} watch={watch} state={state} /></div>
+            <div className={currentStep === 3 ? 'block' : 'hidden'}><Step3 control={control} watch={watch} state={state} /></div>
             <div className={currentStep === 4 ? 'block' : 'hidden'}><Step4 control={control} state={state} /></div>
 
             <div className="mt-8 flex items-center justify-between">
@@ -470,3 +489,5 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     </div>
   );
 }
+
+    
