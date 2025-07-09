@@ -343,7 +343,7 @@ const Step2 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
         </div>
          <div>
             <h3 className="font-semibold text-lg mb-2">Drink You Dislike (1)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {dislikedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedDrinks" placeholderName="MILK" placeholderDescription="A glass of plain milk" />)}
             </div>
         </div>
@@ -377,7 +377,7 @@ const Step3 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
         </div>
         <div>
             <h3 className="font-semibold text-lg mb-2">Exercise You Dislike (1)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {dislikedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedExerciseActivities" placeholderName="RUNNING" placeholderDescription="A person running on a treadmill" />)}
             </div>
         </div>

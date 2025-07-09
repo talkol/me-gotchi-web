@@ -228,7 +228,24 @@ export async function generateMeGotchiAsset(
       return { status: "success", message: "Step 2 preview generated.", imageUrl: step2AssetUrl };
     }
 
-    // Steps 3 & 4: AI Generation
+    // Step 3: Test case - copy base image to a new location.
+    if (step === 3) {
+      let step3AssetUrl: string;
+      if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
+          const baseImageRef = ref(storage, baseImageUrl);
+          const blob = await getBlob(baseImageRef);
+          const newPath = `${inviteCode}/activities-atlas.png`;
+          const newRef = ref(storage, newPath);
+          await uploadBytes(newRef, blob, { contentType: blob.type });
+          step3AssetUrl = await getDownloadURL(newRef);
+      } else {
+          // In local mode, just return the same data URI.
+          step3AssetUrl = baseImageUrl;
+      }
+      return { status: "success", message: "Step 3 preview generated.", imageUrl: step3AssetUrl };
+    }
+
+    // Step 4: AI Generation
     let photoDataUri: string;
     if (baseImageUrl.startsWith('data:image')) {
       photoDataUri = baseImageUrl;
