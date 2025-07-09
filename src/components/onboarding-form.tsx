@@ -193,7 +193,7 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
               <FormItem>
                 <FormLabel className="text-base font-semibold">Age</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="e.g., 25" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} className="text-base"/>
+                  <Input type="number" placeholder="e.g., 25" {...field} className="text-base"/>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -353,7 +353,7 @@ const Step4 = ({ control, state }: { control: Control<OnboardingFormData>, state
                   <FormItem>
                     <FormLabel className="text-base font-semibold">Environment {index + 1}</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="e.g., A vibrant, colorful playroom with toys and games..." className="min-h-[80px] text-base" />
+                      <Textarea {...field} placeholder="vibrant colorful children playroom that has toys and games and is appropriate for a 9 years old boy named Leo" className="min-h-[80px] text-base" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -395,7 +395,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     defaultValues: {
       firstName: "",
       gender: undefined,
-      age: NaN,
+      age: '',
       photo: undefined,
       inviteCode: inviteCode,
       likedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
