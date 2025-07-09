@@ -40,6 +40,8 @@ const ActivityItemSchema = z.object({
 const EnvironmentItemSchema = z.object({
   explanation: z.string(),
 });
+
+// Full schema for client-side validation context
 const OnboardingFormSchema = z.object({
   firstName: z.string().min(1, "First name is required.").max(11, "Max 11 characters."),
   gender: z.enum(["male", "female"], { required_error: "Please select a gender." }),
@@ -57,6 +59,7 @@ const OnboardingFormSchema = z.object({
   dislikedExerciseActivities: z.array(ActivityItemSchema).length(1),
   environments: z.array(EnvironmentItemSchema).length(4),
   inviteCode: z.string().min(1),
+  step: z.coerce.number().min(1).max(4),
 });
 type OnboardingFormData = z.infer<typeof OnboardingFormSchema>;
 
@@ -67,14 +70,13 @@ const STEPS = [
   { id: 4, title: "Environments & Generation", fields: ["environments"] },
 ];
 
-function SubmitButton({ isSuccess }: { isSuccess: boolean }) {
-  const { pending } = useFormStatus();
+function GenerateButton({ isGenerating, isSuccess }: { isGenerating: boolean; isSuccess: boolean }) {
   return (
-    <Button type="submit" size="lg" className="w-full font-bold" disabled={pending || isSuccess}>
-      {pending ? (
+    <Button type="submit" size="lg" className="w-full font-bold" disabled={isGenerating || isSuccess}>
+      {isGenerating ? (
         <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
       ) : isSuccess ? (
-        <><CheckCircle className="mr-2 h-4 w-4" /> Done!</>
+        <><CheckCircle className="mr-2 h-4 w-4" /> Generated!</>
       ) : (
         <><Wand2 className="mr-2 h-4 w-4" /> Generate</>
       )}
@@ -82,21 +84,19 @@ function SubmitButton({ isSuccess }: { isSuccess: boolean }) {
   );
 }
 
-const AssetPreview = ({ state, isFinalStep }: { state: FormState; isFinalStep: boolean }) => {
-    const { pending } = useFormStatus();
-
+const AssetPreview = ({ state, isGenerating }: { state: FormState; isGenerating: boolean }) => {
     const AssetDisplay = useMemo(() => {
         if (state.status === 'success' && state.imageUrl) {
             return <Image src={state.imageUrl} alt="Generated Me-Gotchi Asset" width={512} height={512} className="rounded-lg object-cover w-full h-full" data-ai-hint="avatar character" />;
         }
-        if (isFinalStep && pending) {
+        if (isGenerating) {
             return <div className="w-full h-full flex flex-col items-center justify-center space-y-4 p-8 bg-accent/30 rounded-lg"><Skeleton className="h-full w-full rounded-lg" /><div className="flex items-center space-x-2 text-foreground"><RefreshCw className="animate-spin h-5 w-5" /><p className="font-headline">AI is creating magic...</p></div></div>;
         }
-        if (isFinalStep && state.status === 'error') {
+        if (state.status === 'error') {
             return <div className="w-full h-full flex flex-col items-center justify-center text-destructive p-4"><AlertCircle className="h-16 w-16" /><p className="mt-4 font-semibold text-center">{state.message}</p></div>
         }
         return <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4"><Sparkles className="h-16 w-16" /><p className="mt-4 font-semibold text-center">Your generated asset will appear here</p></div>;
-    }, [state, pending, isFinalStep]);
+    }, [state, isGenerating]);
 
     return (
         <div className="w-full max-w-md mx-auto aspect-square bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden">
@@ -164,7 +164,38 @@ const PreferenceItem = ({
   );
 };
 
-const Step1 = ({ control, watch, state }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData>, state: FormState }) => {
+const StepCard = ({ title, children, state, isGenerating, isFinalStep = false }: {
+    title: string;
+    children: React.ReactNode;
+    state: FormState;
+    isGenerating: boolean;
+    isFinalStep?: boolean;
+}) => (
+    <Card className="shadow-lg">
+        <CardHeader><CardTitle className="font-headline text-2xl">{title}</CardTitle></CardHeader>
+        <CardContent>
+            {children}
+            <Separator className="my-8" />
+             <div>
+                <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    <div className="flex flex-col justify-start h-full space-y-4">
+                        <GenerateButton isGenerating={isGenerating} isSuccess={state.status === 'success'}/>
+                        <p className="text-xs text-muted-foreground text-center">
+                            {isFinalStep
+                                ? "Press 'Generate' to create your final Me-Gotchi. The asset will be stored and become available in the game."
+                                : "Press 'Generate' to preview your Me-Gotchi. You can generate again if you're not happy with the result."
+                            }
+                        </p>
+                    </div>
+                    <AssetPreview state={state} isGenerating={isGenerating} />
+                </div>
+            </div>
+        </CardContent>
+    </Card>
+);
+
+const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData> }) => {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const photoFile = watch("photo");
     useEffect(() => {
@@ -177,274 +208,154 @@ const Step1 = ({ control, watch, state }: { control: Control<OnboardingFormData>
     }, [photoFile]);
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader>
-        <CardTitle className="font-headline text-2xl">Step 1: Your Likeness</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-                <FormField
-                  control={control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-semibold">First Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Your first name" {...field} className="text-base"/>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                    control={control}
-                    name="gender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-semibold">Gender</FormLabel>
-                         <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                                <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={control}
-                    name="age"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-semibold">Age</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="e.g., 25" {...field} value={field.value ?? ''} className="text-base"/>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-            </div>
-            <FormField
-              control={control}
-              name="photo"
-              render={({ field: { onChange, value, ...rest }, fieldState }) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-6">
+            <FormField control={control} name="firstName" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base font-semibold">Your Photo</FormLabel>
-                  <FormControl>
-                    <div className="relative flex items-center justify-center w-full h-full min-h-[256px]">
-                      <label
-                        htmlFor="dropzone-file"
-                        className={`flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${
-                          fieldState.invalid ? 'border-destructive' : 'border-border'
-                        }`}
-                      >
-                        {previewUrl ? (
-                          <Image src={previewUrl} alt="Photo preview" fill objectFit="contain" className="rounded-lg p-2" />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
-                            <p className="mb-2 text-sm text-muted-foreground">
-                              <span className="font-semibold">Click to upload</span> or drag and drop
-                            </p>
-                            <p className="text-xs text-muted-foreground">PNG, JPG or WEBP (MAX. 4MB)</p>
-                          </div>
-                        )}
-                        <input
-                          id="dropzone-file"
-                          type="file"
-                          className="hidden"
-                          onChange={(e) => onChange(e.target.files?.[0])}
-                          {...rest}
-                          accept="image/png, image/jpeg, image/webp"
-                        />
-                      </label>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
+                    <FormLabel className="text-base font-semibold">First Name</FormLabel>
+                    <FormControl><Input placeholder="Your first name" {...field} className="text-base"/></FormControl>
+                    <FormMessage />
                 </FormItem>
-              )}
-            />
+            )} />
+             <FormField control={control} name="gender" render={({ field }) => (
+                <FormItem>
+                    <FormLabel className="text-base font-semibold">Gender</FormLabel>
+                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+            )} />
+              <FormField control={control} name="age" render={({ field }) => (
+                <FormItem>
+                    <FormLabel className="text-base font-semibold">Age</FormLabel>
+                    <FormControl><Input type="number" placeholder="e.g., 25" {...field} value={field.value || ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} className="text-base"/></FormControl>
+                    <FormMessage />
+                </FormItem>
+            )} />
         </div>
-        <Separator className="my-8" />
-        <div>
-            <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                 <div className="flex flex-col justify-center h-full space-y-4">
-                    <Button type="button" size="lg" className="w-full font-bold" disabled>
-                        <Wand2 className="mr-2 h-4 w-4" /> Generate
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                        Complete all steps to enable asset generation. Your Me-Gotchi will be created using AI based on all your answers.
-                    </p>
+        <FormField control={control} name="photo" render={({ field: { onChange, value, ...rest }, fieldState }) => (
+            <FormItem>
+              <FormLabel className="text-base font-semibold">Your Photo</FormLabel>
+              <FormControl>
+                <div className="relative flex items-center justify-center w-full h-full min-h-[256px]">
+                  <label htmlFor="dropzone-file" className={`flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${fieldState.error ? 'border-destructive' : 'border-border'}`}>
+                    {previewUrl ? (
+                      <Image src={previewUrl} alt="Photo preview" fill objectFit="contain" className="rounded-lg p-2" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
+                        <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG or WEBP (MAX. 4MB)</p>
+                      </div>
+                    )}
+                    <input id="dropzone-file" type="file" className="hidden" onChange={(e) => onChange(e.target.files?.[0])} {...rest} accept="image/png, image/jpeg, image/webp" />
+                  </label>
                 </div>
-                <AssetPreview state={state} isFinalStep={false} />
-            </div>
-        </div>
-      </CardContent>
-    </Card>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+        )} />
+    </div>
   );
 };
-const Step2 = ({ control, watch, state }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData>, state: FormState}) => {
+const Step2 = ({ control, watch }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData> }) => {
     const { fields: likedFoods } = useFieldArray({ control, name: 'likedFoods' });
     const { fields: dislikedFoods } = useFieldArray({ control, name: 'dislikedFoods' });
     const { fields: likedDrinks } = useFieldArray({ control, name: 'likedDrinks' });
     const { fields: dislikedDrinks } = useFieldArray({ control, name: 'dislikedDrinks' });
   return (
-    <Card className="shadow-lg">
-      <CardHeader><CardTitle className="font-headline text-2xl">Step 2: Food Preferences</CardTitle></CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-            <div>
-                <h3 className="font-semibold text-lg mb-2">Foods You Like (3)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {likedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFoods" placeholderName="PIZZA" placeholderDescription="A single slice of pizza with pepperoni on top" />)}
-                </div>
-            </div>
-            <div>
-                <h3 className="font-semibold text-lg mb-2">Foods You Dislike (3)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {dislikedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFoods" placeholderName="BROCCOLI" placeholderDescription="Steamed broccoli florets" />)}
-                </div>
-            </div>
-            <div>
-                <h3 className="font-semibold text-lg mb-2">Drinks You Like (2)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {likedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedDrinks" placeholderName="APPLE JUICE" placeholderDescription="A glass of apple juice without any labels" />)}
-                </div>
-            </div>
-             <div>
-                <h3 className="font-semibold text-lg mb-2">Drink You Dislike (1)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                    {dislikedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedDrinks" placeholderName="MILK" placeholderDescription="A glass of plain milk" />)}
-                </div>
-            </div>
-        </div>
-        <Separator className="my-8" />
+    <div className="space-y-6">
         <div>
-            <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                 <div className="flex flex-col justify-center h-full space-y-4">
-                    <Button type="button" size="lg" className="w-full font-bold" disabled>
-                        <Wand2 className="mr-2 h-4 w-4" /> Generate
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                        Complete all steps to enable asset generation. Your Me-Gotchi will be created using AI based on all your answers.
-                    </p>
-                </div>
-                <AssetPreview state={state} isFinalStep={false} />
+            <h3 className="font-semibold text-lg mb-2">Foods You Like (3)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {likedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFoods" placeholderName="PIZZA" placeholderDescription="A single slice of pizza with pepperoni on top" />)}
             </div>
         </div>
-      </CardContent>
-    </Card>
+        <div>
+            <h3 className="font-semibold text-lg mb-2">Foods You Dislike (3)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {dislikedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFoods" placeholderName="BROCCOLI" placeholderDescription="Steamed broccoli florets" />)}
+            </div>
+        </div>
+        <div>
+            <h3 className="font-semibold text-lg mb-2">Drinks You Like (2)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {likedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedDrinks" placeholderName="APPLE JUICE" placeholderDescription="A glass of apple juice without any labels" />)}
+            </div>
+        </div>
+         <div>
+            <h3 className="font-semibold text-lg mb-2">Drink You Dislike (1)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                {dislikedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedDrinks" placeholderName="MILK" placeholderDescription="A glass of plain milk" />)}
+            </div>
+        </div>
+    </div>
   );
 };
-const Step3 = ({ control, watch, state }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData>, state: FormState }) => {
+const Step3 = ({ control, watch }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData> }) => {
     const { fields: likedFun } = useFieldArray({ control, name: 'likedFunActivities' });
     const { fields: dislikedFun } = useFieldArray({ control, name: 'dislikedFunActivities' });
     const { fields: likedExercise } = useFieldArray({ control, name: 'likedExerciseActivities' });
     const { fields: dislikedExercise } = useFieldArray({ control, name: 'dislikedExerciseActivities' });
   return (
-    <Card className="shadow-lg">
-      <CardHeader><CardTitle className="font-headline text-2xl">Step 3: Activity Preferences</CardTitle></CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-            <div>
-                <h3 className="font-semibold text-lg mb-2">Fun Activities You Like (3)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {likedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFunActivities" placeholderName="PLAYSTATION" placeholderDescription="A white ps5 console standing upright" />)}
-                </div>
-            </div>
-            <div>
-                <h3 className="font-semibold text-lg mb-2">Fun Activities You Dislike (2)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {dislikedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFunActivities" placeholderName="READING" placeholderDescription="An open book on a table" />)}
-                </div>
-            </div>
-            <div>
-                <h3 className="font-semibold text-lg mb-2">Exercise You Like (2)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {likedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedExerciseActivities" placeholderName="FOOTBALL" placeholderDescription="A soccer ball" />)}
-                </div>
-            </div>
-            <div>
-                <h3 className="font-semibold text-lg mb-2">Exercise You Dislike (1)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                    {dislikedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedExerciseActivities" placeholderName="RUNNING" placeholderDescription="A person running on a treadmill" />)}
-                </div>
-            </div>
-        </div>
-        <Separator className="my-8" />
+    <div className="space-y-6">
         <div>
-           <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                 <div className="flex flex-col justify-center h-full space-y-4">
-                    <Button type="button" size="lg" className="w-full font-bold" disabled>
-                        <Wand2 className="mr-2 h-4 w-4" /> Generate
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                        Complete all steps to enable asset generation. Your Me-Gotchi will be created using AI based on all your answers.
-                    </p>
-                </div>
-                <AssetPreview state={state} isFinalStep={false} />
+            <h3 className="font-semibold text-lg mb-2">Fun Activities You Like (3)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {likedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFunActivities" placeholderName="PLAYSTATION" placeholderDescription="A white ps5 console standing upright" />)}
             </div>
         </div>
-      </CardContent>
-    </Card>
+        <div>
+            <h3 className="font-semibold text-lg mb-2">Fun Activities You Dislike (2)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {dislikedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFunActivities" placeholderName="READING" placeholderDescription="An open book on a table" />)}
+            </div>
+        </div>
+        <div>
+            <h3 className="font-semibold text-lg mb-2">Exercise You Like (2)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {likedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedExerciseActivities" placeholderName="FOOTBALL" placeholderDescription="A soccer ball" />)}
+            </div>
+        </div>
+        <div>
+            <h3 className="font-semibold text-lg mb-2">Exercise You Dislike (1)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                {dislikedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedExerciseActivities" placeholderName="RUNNING" placeholderDescription="A person running on a treadmill" />)}
+            </div>
+        </div>
+    </div>
   );
 };
 
-const Step4 = ({ control, state }: { control: Control<OnboardingFormData>, state: FormState }) => {
+const Step4 = ({ control }: { control: Control<OnboardingFormData> }) => {
   const { fields: environments } = useFieldArray({ control, name: 'environments' });
-
   return (
-    <Card className="shadow-lg">
-      <CardHeader>
-        <CardTitle className="font-headline text-2xl">Step 4: Environments</CardTitle>
+    <div className="space-y-4">
         <CardDescription>Describe 4 environments the person is normally found in.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-            {environments.map((item, index) => (
-               <FormField
-                key={item.id}
-                control={control}
-                name={`environments.${index}.explanation`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-base font-semibold">Environment {index + 1}</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} placeholder="vibrant colorful children playroom that has toys and games and is appropriate for a 9 years old boy named Leo" className="min-h-[80px] text-base" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ))}
-        </div>
-        <Separator className="my-8" />
-        <div>
-            <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                <div className="flex flex-col justify-center h-full space-y-4">
-                    <SubmitButton isSuccess={state.status === 'success'} />
-                    <p className="text-xs text-muted-foreground text-center">
-                        Press "Generate" to create your Me-Gotchi using AI. The final asset will be stored and become available in the game. You can generate again if you're not happy with the result.
-                    </p>
-                </div>
-                <AssetPreview state={state} isFinalStep={true} />
-            </div>
-        </div>
-      </CardContent>
-    </Card>
+        {environments.map((item, index) => (
+           <FormField
+            key={item.id}
+            control={control}
+            name={`environments.${index}.explanation`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-base font-semibold">Environment {index + 1}</FormLabel>
+                <FormControl>
+                  <Textarea {...field} placeholder="vibrant colorful children playroom that has toys and games and is appropriate for a 9 years old boy named Leo" className="min-h-[80px] text-base" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ))}
+    </div>
   );
 };
-
 
 export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
@@ -453,6 +364,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
   const initialState: FormState = { status: "idle", message: "" };
   const [state, formAction] = useActionState(generateMeGotchiAsset, initialState);
+  const { pending: isGenerating } = useFormStatus();
 
   const form = useForm<OnboardingFormData>({
     resolver: zodResolver(OnboardingFormSchema),
@@ -463,6 +375,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       age: undefined,
       photo: undefined,
       inviteCode: inviteCode,
+      step: 1,
       likedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
       dislikedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
       likedDrinks: [...Array(2)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
@@ -475,7 +388,9 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     },
   });
 
-  const { control, handleSubmit, trigger, watch, setError } = form;
+  const { control, handleSubmit, trigger, watch, setError, setValue } = form;
+
+  const isSuccess = state.status === 'success';
 
   useEffect(() => {
     if (state.status === "error") {
@@ -485,24 +400,34 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         description: state.message || "Please check the form for errors.",
       });
       if (state.validationErrors) {
-        Object.entries(state.validationErrors).forEach(([field, error]) => {
-           setError(field as any, { type: 'server', message: (error as any)._errors[0]});
+        Object.entries(state.validationErrors).forEach(([field, error]: [any, any]) => {
+           if (error && error._errors && error._errors.length > 0) {
+              setError(field, { type: 'server', message: error._errors[0] });
+           }
         });
       }
     }
-    if (state.status === "success") {
+    if (state.status === "success" && currentStep === 4) {
       toast({ title: "Success!", description: state.message });
     }
-  }, [state, toast, setError]);
+  }, [state, toast, setError, currentStep]);
 
   const handleNext = async () => {
-    const fields = STEPS[currentStep - 1].fields;
-    const output = await trigger(fields as any, { shouldFocus: true });
-    if (!output) return;
     setCurrentStep((prev) => prev + 1);
   };
 
   const handlePrevious = () => setCurrentStep((prev) => prev - 1);
+  
+  const onSubmit = async () => {
+    const fieldsToValidate = STEPS[currentStep - 1].fields as (keyof OnboardingFormData)[];
+    const isValid = await trigger(fieldsToValidate);
+    if (!isValid) {
+        toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fix the errors before generating.' });
+        return;
+    }
+    setValue('step', currentStep);
+    formAction(new FormData(formRef.current!))
+  }
 
   return (
     <div>
@@ -511,20 +436,37 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         <p className="text-center text-sm text-muted-foreground font-medium">{`Step ${currentStep} of 4: ${STEPS[currentStep-1].title}`}</p>
       </div>
        <Form {...form}>
-        <form ref={formRef} action={formAction} onSubmit={handleSubmit(() => formAction(new FormData(formRef.current!)))} className="space-y-8">
+        <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             <input type="hidden" {...form.register("inviteCode")} />
+            <input type="hidden" {...form.register("step")} />
 
-            <div className={currentStep === 1 ? 'block' : 'hidden'}><Step1 control={control} watch={watch} state={state} /></div>
-            <div className={currentStep === 2 ? 'block' : 'hidden'}><Step2 control={control} watch={watch} state={state} /></div>
-            <div className={currentStep === 3 ? 'block' : 'hidden'}><Step3 control={control} watch={watch} state={state} /></div>
-            <div className={currentStep === 4 ? 'block' : 'hidden'}><Step4 control={control} state={state} /></div>
+            <div className={currentStep === 1 ? 'block' : 'hidden'}>
+                <StepCard title="Step 1: Your Likeness" state={state} isGenerating={isGenerating}>
+                    <Step1 control={control} watch={watch} />
+                </StepCard>
+            </div>
+            <div className={currentStep === 2 ? 'block' : 'hidden'}>
+                <StepCard title="Step 2: Food Preferences" state={state} isGenerating={isGenerating}>
+                    <Step2 control={control} watch={watch} />
+                </StepCard>
+            </div>
+            <div className={currentStep === 3 ? 'block' : 'hidden'}>
+                <StepCard title="Step 3: Activity Preferences" state={state} isGenerating={isGenerating}>
+                    <Step3 control={control} watch={watch} />
+                </StepCard>
+            </div>
+             <div className={currentStep === 4 ? 'block' : 'hidden'}>
+                <StepCard title="Step 4: Environments & Generation" state={state} isGenerating={isGenerating} isFinalStep={true}>
+                    <Step4 control={control} />
+                </StepCard>
+            </div>
 
             <div className="mt-8 flex items-center justify-between">
                 <Button type="button" variant="outline" onClick={handlePrevious} className={currentStep === 1 ? 'invisible' : 'visible'}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                 </Button>
                 {currentStep < 4 && (
-                    <Button type="button" size="lg" onClick={handleNext}>
+                    <Button type="button" size="lg" onClick={handleNext} disabled={!isSuccess || isGenerating}>
                         Next Step <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 )}

@@ -22,7 +22,6 @@ const EnvironmentItemSchema = z.object({
   explanation: z.string().optional(),
 });
 
-
 // Main server-side validation schema
 const OnboardingSchema = z.object({
   firstName: z.string().min(1, "First name is required.").max(11, "First name must be 11 characters or less."),
@@ -47,13 +46,14 @@ const OnboardingSchema = z.object({
   environments: z.array(EnvironmentItemSchema).length(4),
   
   inviteCode: z.string().min(1, "Invite code is required."),
+  step: z.coerce.number().min(1).max(4),
 });
 
 export type FormState = {
-  status: "idle" | "success" | "error";
+  status: "idle" | "success" | "error" | "generating";
   message: string;
   imageUrl?: string;
-  validationErrors?: Record<string, any>; // Changed to any for nested errors
+  validationErrors?: Record<string, any>;
 };
 
 // Helper function to parse array data from FormData
@@ -67,10 +67,8 @@ function parseArrayFromFormData<T>(formData: FormData, key: string, count: numbe
     } else {
         const name = formData.get(`${key}.${i}.name`) as string | null;
         item.name = name || "";
-
         const addExplanation = formData.get(`${key}.${i}.addExplanation`) === 'on';
         item.addExplanation = addExplanation;
-        
         const explanation = formData.get(`${key}.${i}.explanation`) as string | null;
         item.explanation = explanation || "";
     }
@@ -79,11 +77,15 @@ function parseArrayFromFormData<T>(formData: FormData, key: string, count: numbe
   return arr as T[];
 }
 
-// Helper to format preferences for the AI
-function formatPreferencesForAI(data: z.infer<typeof OnboardingSchema>): string {
-    let preferences = `User's name is ${data.firstName}, a ${data.age} year old ${data.gender}.\n\n`;
+// Helper to format preferences for the AI, now handles partial data
+function formatPreferencesForAI(data: Partial<z.infer<typeof OnboardingSchema>>): string {
+    let preferences = ``;
+    if(data.firstName && data.age && data.gender) {
+        preferences += `User's name is ${data.firstName}, a ${data.age} year old ${data.gender}.\n\n`;
+    }
 
-    const formatList = (title: string, items: { name?: string, explanation?: string }[]) => {
+    const formatList = (title: string, items?: { name?: string, explanation?: string }[]) => {
+        if (!items) return "";
         const filteredItems = items.filter(item => (item.name && item.name.trim()) || (item.explanation && item.explanation.trim()));
         if (filteredItems.length === 0) return "";
 
@@ -100,7 +102,8 @@ function formatPreferencesForAI(data: z.infer<typeof OnboardingSchema>): string 
         return listString + '\n';
     };
     
-    const formatEnvList = (title: string, items: { explanation?: string }[]) => {
+    const formatEnvList = (title: string, items?: { explanation?: string }[]) => {
+        if (!items) return "";
         const filteredItems = items.filter(item => item.explanation && item.explanation.trim());
         if (filteredItems.length === 0) return "";
         let listString = `${title}:\n`;
@@ -109,31 +112,34 @@ function formatPreferencesForAI(data: z.infer<typeof OnboardingSchema>): string 
         });
         return listString + '\n';
     }
+    
+    const gender = data.gender || 'male';
 
-    preferences += formatList(data.gender === 'male' ? "He likes to eat" : "She likes to eat", data.likedFoods);
-    preferences += formatList(data.gender === 'male' ? "He dislikes eating" : "She dislikes eating", data.dislikedFoods);
-    preferences += formatList(data.gender === 'male' ? "He likes to drink" : "She likes to drink", data.likedDrinks);
-    preferences += formatList(data.gender === 'male' ? "He dislikes drinking" : "She dislikes drinking", data.dislikedDrinks);
-    preferences += formatList(data.gender === 'male' ? "He enjoys these fun activities" : "She enjoys these fun activities", data.likedFunActivities);
-    preferences += formatList(data.gender === 'male' ? "He dislikes these fun activities" : "She dislikes these fun activities", data.dislikedFunActivities);
-    preferences += formatList(data.gender === 'male' ? "He likes these exercises" : "She likes these exercises", data.likedExerciseActivities);
-    preferences += formatList(data.gender === 'male' ? "He dislikes this exercise" : "She dislikes this exercise", data.dislikedExerciseActivities);
+    preferences += formatList(gender === 'male' ? "He likes to eat" : "She likes to eat", data.likedFoods);
+    preferences += formatList(gender === 'male' ? "He dislikes eating" : "She dislikes eating", data.dislikedFoods);
+    preferences += formatList(gender === 'male' ? "He likes to drink" : "She likes to drink", data.likedDrinks);
+    preferences += formatList(gender === 'male' ? "He dislikes drinking" : "She dislikes drinking", data.dislikedDrinks);
+    preferences += formatList(gender === 'male' ? "He enjoys these fun activities" : "She enjoys these fun activities", data.likedFunActivities);
+    preferences += formatList(gender === 'male' ? "He dislikes these fun activities" : "She dislikes these fun activities", data.dislikedFunActivities);
+    preferences += formatList(gender === 'male' ? "He likes these exercises" : "She likes these exercises", data.likedExerciseActivities);
+    preferences += formatList(gender === 'male' ? "He dislikes this exercise" : "She dislikes this exercise", data.dislikedExerciseActivities);
     preferences += formatEnvList("He/She is often found in these environments", data.environments);
     
-    return preferences;
+    return preferences.trim() || "A generic character.";
 }
-
 
 export async function generateMeGotchiAsset(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
+  
   const rawFormData = {
     firstName: formData.get("firstName"),
     gender: formData.get("gender"),
     age: formData.get("age"),
     photo: formData.get("photo"),
     inviteCode: formData.get("inviteCode"),
+    step: formData.get("step"),
     likedFoods: parseArrayFromFormData(formData, 'likedFoods', 3),
     dislikedFoods: parseArrayFromFormData(formData, 'dislikedFoods', 3),
     likedDrinks: parseArrayFromFormData(formData, 'likedDrinks', 2),
@@ -144,8 +150,11 @@ export async function generateMeGotchiAsset(
     dislikedExerciseActivities: parseArrayFromFormData(formData, 'dislikedExerciseActivities', 1),
     environments: parseArrayFromFormData(formData, 'environments', 4, true),
   };
+  
+  const step = Number(rawFormData.step);
+  const isFinalStep = step === 4;
 
-  const validationResult = OnboardingSchema.safeParse(rawFormData);
+  const validationResult = OnboardingSchema.partial().safeParse(rawFormData);
   
   if (!validationResult.success) {
     return {
@@ -156,6 +165,10 @@ export async function generateMeGotchiAsset(
   }
 
   const { photo, inviteCode } = validationResult.data;
+  if (!photo || !(photo instanceof File) || photo.size === 0) {
+      return { status: 'error', message: 'A photo is required for generation.' };
+  }
+  
   const preferences = formatPreferencesForAI(validationResult.data);
 
   try {
@@ -171,23 +184,34 @@ export async function generateMeGotchiAsset(
       throw new Error("AI failed to generate an asset.");
     }
     
-    const imageResponse = await fetch(aiResult.assetUrl);
-    if (!imageResponse.ok) {
-        throw new Error("Failed to download the generated asset from AI provider.");
+    // If it's the final step, upload to storage and return the public URL
+    if (isFinalStep) {
+        const imageResponse = await fetch(aiResult.assetUrl);
+        if (!imageResponse.ok) {
+            throw new Error("Failed to download the generated asset from AI provider.");
+        }
+        const imageBlob = await imageResponse.blob();
+
+        const storagePath = `${inviteCode}/me-gotchi-asset.png`;
+        const storageRef = ref(storage, storagePath);
+        await uploadBytes(storageRef, imageBlob, { contentType: 'image/png' });
+
+        const finalUrl = await getDownloadURL(storageRef);
+
+        return {
+          status: "success",
+          message: "Your Me-Gotchi has been created!",
+          imageUrl: finalUrl,
+        };
+    } else {
+        // For intermediate steps, return the data URI directly for preview
+        return {
+            status: "success",
+            message: `Step ${step} preview generated successfully!`,
+            imageUrl: aiResult.assetUrl,
+        };
     }
-    const imageBlob = await imageResponse.blob();
 
-    const storagePath = `${inviteCode}/me-gotchi-asset.png`;
-    const storageRef = ref(storage, storagePath);
-    await uploadBytes(storageRef, imageBlob, { contentType: 'image/png' });
-
-    const finalUrl = await getDownloadURL(storageRef);
-
-    return {
-      status: "success",
-      message: "Your Me-Gotchi has been created!",
-      imageUrl: finalUrl,
-    };
   } catch (error) {
     console.error("Error generating asset:", error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
