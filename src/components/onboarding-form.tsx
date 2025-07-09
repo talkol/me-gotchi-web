@@ -311,7 +311,8 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
                         <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                        <p className="text-xs text-muted-foreground">PNG, JPG or WEBP (MAX. 4MB)<br>Front-looking photo of face and upper body</br></p>
+                        <p className="text-xs text-muted-foreground">Front-looking photo of face and upper body</p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG or WEBP (MAX. 4MB)</p>
                       </div>
                     )}
                     <input id="dropzone-file" type="file" className="hidden" onChange={(e) => onChange(e.target.files?.[0])} {...rest} accept="image/png, image/jpeg, image/webp" />
