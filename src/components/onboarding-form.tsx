@@ -59,7 +59,7 @@ const OnboardingFormSchema = z.object({
   environments: z.array(EnvironmentItemSchema).length(4),
   inviteCode: z.string().min(1),
   step: z.coerce.number().min(1).max(4),
-  imageUrl: z.string().optional(),
+  imageUrl: z.string().optional(), // Stores the base image URL from step 1
 });
 type OnboardingFormData = z.infer<typeof OnboardingFormSchema>;
 
@@ -70,12 +70,12 @@ const STEPS = [
   { id: 4, title: "Environments & Generation", fields: ["environments"] },
 ];
 
-function GenerateButton({ isGenerating, isSuccess }: { isGenerating: boolean; isSuccess: boolean }) {
+function GenerateButton({ isGenerating, hasBeenGenerated }: { isGenerating: boolean; hasBeenGenerated: boolean }) {
   return (
     <Button type="submit" size="lg" className="w-full font-bold" disabled={isGenerating}>
       {isGenerating ? (
         <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
-      ) : isSuccess ? (
+      ) : hasBeenGenerated ? (
         <><CheckCircle className="mr-2 h-4 w-4" /> Generated! Click to Regenerate</>
       ) : (
         <><Wand2 className="mr-2 h-4 w-4" /> Generate</>
@@ -84,24 +84,31 @@ function GenerateButton({ isGenerating, isSuccess }: { isGenerating: boolean; is
   );
 }
 
-const AssetPreview = ({ state, isGenerating }: { state: FormState; isGenerating: boolean }) => {
-    // Show the new image if the generation was successful, otherwise keep showing the old one during generation.
-    const imageUrl = state.status === 'success' ? state.imageUrl : (state.status === 'generating' ? prevState?.imageUrl : state.imageUrl);
-    const prevState = useActionState(generateMeGotchiAsset, { status: "idle", message: "" })[0];
-
+const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: string; isGenerating: boolean, status: FormState['status'], message: string }) => {
+    const showLoading = isGenerating && !imageUrl;
+    const showPreviousImageWhileLoading = isGenerating && imageUrl;
 
     const AssetDisplay = useMemo(() => {
-        if (state.imageUrl) {
-            return <Image src={state.imageUrl} alt="Generated Me-Gotchi Asset" width={512} height={512} className="rounded-lg object-cover w-full h-full" data-ai-hint="avatar character" />;
+        if (showPreviousImageWhileLoading || imageUrl) {
+             return (
+                <div className="relative w-full h-full">
+                    <Image src={imageUrl!} alt="Generated Me-Gotchi Asset" width={512} height={512} className="rounded-lg object-cover w-full h-full" data-ai-hint="avatar character" />
+                    {showPreviousImageWhileLoading && (
+                        <div className="absolute inset-0 bg-background/70 flex items-center justify-center rounded-lg">
+                           <div className="flex items-center space-x-2 text-foreground p-4 rounded-lg bg-background/80"><RefreshCw className="animate-spin h-5 w-5" /><p className="font-headline">Regenerating...</p></div>
+                        </div>
+                    )}
+                </div>
+            );
         }
-        if (isGenerating) {
+        if (showLoading) {
             return <div className="w-full h-full flex flex-col items-center justify-center space-y-4 p-8 bg-accent/30 rounded-lg"><Skeleton className="h-full w-full rounded-lg" /><div className="flex items-center space-x-2 text-foreground"><RefreshCw className="animate-spin h-5 w-5" /><p className="font-headline">AI is creating magic...</p></div></div>;
         }
-        if (state.status === 'error') {
-            return <div className="w-full h-full flex flex-col items-center justify-center text-destructive p-4"><AlertCircle className="h-16 w-16" /><p className="mt-4 font-semibold text-center">{state.message}</p></div>
+        if (status === 'error') {
+            return <div className="w-full h-full flex flex-col items-center justify-center text-destructive p-4"><AlertCircle className="h-16 w-16" /><p className="mt-4 font-semibold text-center">{message}</p></div>
         }
         return <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4"><Sparkles className="h-16 w-16" /><p className="mt-4 font-semibold text-center">Your generated asset will appear here</p></div>;
-    }, [state, isGenerating]);
+    }, [imageUrl, isGenerating, status, message, showPreviousImageWhileLoading, showLoading]);
 
     return (
         <div className="w-full max-w-md mx-auto aspect-square bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden">
@@ -124,7 +131,7 @@ const PreferenceItem = ({
   const showExplanation = watch(`${name}.${index}.addExplanation`);
 
   return (
-    <div className="space-y-2 p-3 border rounded-md">
+    <div className="space-y-2 p-3 border rounded-md bg-background">
        <FormField
         control={control}
         name={`${name}.${index}.name`}
@@ -169,11 +176,13 @@ const PreferenceItem = ({
   );
 };
 
-const StepCard = ({ title, children, state, isGenerating, isFinalStep = false }: {
+const StepCard = ({ title, children, imageUrl, state, isGenerating, hasBeenGenerated, isFinalStep = false }: {
     title: string;
     children: React.ReactNode;
+    imageUrl?: string;
     state: FormState;
     isGenerating: boolean;
+    hasBeenGenerated: boolean;
     isFinalStep?: boolean;
 }) => (
     <Card className="shadow-lg">
@@ -185,7 +194,7 @@ const StepCard = ({ title, children, state, isGenerating, isFinalStep = false }:
                 <h3 className="text-xl font-headline mb-4">Generated Asset</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     <div className="flex flex-col justify-start h-full space-y-4">
-                        <GenerateButton isGenerating={isGenerating} isSuccess={state.status === 'success'}/>
+                        <GenerateButton isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated}/>
                         <p className="text-xs text-muted-foreground text-center">
                             {isFinalStep
                                 ? "Press 'Generate' to create your final Me-Gotchi. The asset will be stored and become available in the game."
@@ -193,7 +202,7 @@ const StepCard = ({ title, children, state, isGenerating, isFinalStep = false }:
                             }
                         </p>
                     </div>
-                    <AssetPreview state={state} isGenerating={isGenerating} />
+                    <AssetPreview imageUrl={imageUrl} isGenerating={isGenerating} status={state.status} message={state.message} />
                 </div>
             </div>
         </CardContent>
@@ -277,13 +286,13 @@ const Step2 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
     <div className="space-y-6">
         <div>
             <h3 className="font-semibold text-lg mb-2">Foods You Like (3)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {likedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFoods" placeholderName="PIZZA" placeholderDescription="A single slice of pizza with pepperoni on top" />)}
             </div>
         </div>
         <div>
             <h3 className="font-semibold text-lg mb-2">Foods You Dislike (3)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {dislikedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFoods" placeholderName="BROCCOLI" placeholderDescription="Steamed broccoli florets" />)}
             </div>
         </div>
@@ -311,7 +320,7 @@ const Step3 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
     <div className="space-y-6">
         <div>
             <h3 className="font-semibold text-lg mb-2">Fun Activities You Like (3)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {likedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFunActivities" placeholderName="PLAYSTATION" placeholderDescription="A white ps5 console standing upright" />)}
             </div>
         </div>
@@ -366,6 +375,9 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+  
+  const [stepImageUrls, setStepImageUrls] = useState<Record<number, string | undefined>>({});
+  const lastActionStep = useRef<number | null>(null);
 
   const initialState: FormState = { status: "idle", message: "" };
   const [state, formAction] = useActionState(generateMeGotchiAsset, initialState);
@@ -396,8 +408,6 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
   const { control, handleSubmit, trigger, watch, setError, setValue } = form;
 
-  const isSuccess = state.status === 'success';
-
   useEffect(() => {
     if (state.status === "error") {
       toast({
@@ -413,15 +423,20 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         });
       }
     }
-    if (state.status === "success") {
-       setValue("imageUrl", state.imageUrl || "");
-       if (currentStep === 1) { // On step 1, the AI result is the user's photo, show it.
-         // no toast
-       } else if (currentStep === 4) { // Final step toast
+    if (state.status === "success" && state.imageUrl) {
+       // For step 1, we also save the returned URL to a hidden form field.
+       // This will be the base image for all subsequent steps.
+       if (lastActionStep.current === 1) {
+         setValue("imageUrl", state.imageUrl);
+       }
+       // Store the generated asset for the current step for display.
+       setStepImageUrls(prev => ({...prev, [lastActionStep.current!]: state.imageUrl}));
+
+       if (lastActionStep.current === 4) { // Final step toast
          toast({ title: "Success!", description: state.message });
        }
     }
-  }, [state, toast, setError, setValue, currentStep]);
+  }, [state, toast, setError, setValue]);
 
   const handleNext = async () => {
     setCurrentStep((prev) => prev + 1);
@@ -437,10 +452,15 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         return;
     }
     setValue('step', currentStep);
+    lastActionStep.current = currentStep;
     startTransition(() => {
       formAction(new FormData(formRef.current!));
     });
   }
+  
+  const hasBeenGenerated = !!stepImageUrls[currentStep];
+  const stepState = lastActionStep.current === currentStep ? state : initialState;
+
 
   return (
     <div>
@@ -455,22 +475,22 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
             <input type="hidden" {...form.register("imageUrl")} />
 
             <div className={currentStep === 1 ? 'block' : 'hidden'}>
-                <StepCard title="Step 1: Your Likeness" state={state} isGenerating={isGenerating}>
+                <StepCard title="Step 1: Your Likeness" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} imageUrl={stepImageUrls[1]}>
                     <Step1 control={control} watch={watch} />
                 </StepCard>
             </div>
             <div className={currentStep === 2 ? 'block' : 'hidden'}>
-                <StepCard title="Step 2: Food Preferences" state={state} isGenerating={isGenerating}>
+                <StepCard title="Step 2: Food Preferences" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} imageUrl={stepImageUrls[2]}>
                     <Step2 control={control} watch={watch} />
                 </StepCard>
             </div>
             <div className={currentStep === 3 ? 'block' : 'hidden'}>
-                <StepCard title="Step 3: Activity Preferences" state={state} isGenerating={isGenerating}>
+                <StepCard title="Step 3: Activity Preferences" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} imageUrl={stepImageUrls[3]}>
                     <Step3 control={control} watch={watch} />
                 </StepCard>
             </div>
              <div className={currentStep === 4 ? 'block' : 'hidden'}>
-                <StepCard title="Step 4: Environments & Generation" state={state} isGenerating={isGenerating} isFinalStep={true}>
+                <StepCard title="Step 4: Environments & Generation" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} isFinalStep={true} imageUrl={stepImageUrls[4]}>
                     <Step4 control={control} />
                 </StepCard>
             </div>
@@ -480,7 +500,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                 </Button>
                 {currentStep < 4 && (
-                    <Button type="button" size="lg" onClick={handleNext} disabled={!isSuccess || isGenerating}>
+                    <Button type="button" size="lg" onClick={handleNext} disabled={!stepImageUrls[currentStep] || isGenerating}>
                         Next Step <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 )}

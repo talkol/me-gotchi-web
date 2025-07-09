@@ -30,7 +30,7 @@ const OnboardingSchema = z.object({
     z.string().min(1, "First name is required.").max(11, "First name must be 11 characters or less.").optional()
   ),
   gender: z.preprocess(
-    (val) => (val === null ? undefined : val),
+    (val) => (val === null || val === "" ? undefined : val),
     z.enum(["male", "female"], { invalid_type_error: "Please select a gender." }).optional()
   ),
   age: z.preprocess(
@@ -59,7 +59,7 @@ const OnboardingSchema = z.object({
   
   inviteCode: z.string().min(1, "Invite code is required."),
   step: z.coerce.number().min(1).max(4),
-  imageUrl: z.string().optional(), // This now carries state between steps
+  imageUrl: z.string().optional(), // This now carries the BASE image URL after step 1
 });
 
 export type FormState = {
@@ -165,7 +165,6 @@ export async function generateMeGotchiAsset(
     environments: parseArrayFromFormData(formData, 'environments', 4, true),
   };
   
-  // 1. Validate form data
   const validationResult = OnboardingSchema.partial().safeParse(rawFormData);
   if (!validationResult.success) {
     const flatErrors = validationResult.error.flatten();
@@ -174,7 +173,7 @@ export async function generateMeGotchiAsset(
         .join('; ');
 
     const detailedMessage = `Server validation failed. Errors: ${errorMessages}`;
-    console.error(detailedMessage, flatErrors);
+    console.error(detailedMessage, flatErrors.fieldErrors);
 
     return {
       status: "error",
@@ -183,57 +182,63 @@ export async function generateMeGotchiAsset(
     };
   }
   
-  const { inviteCode, step, photo } = validationResult.data;
+  const { inviteCode, step, photo, imageUrl: baseImageUrl } = validationResult.data;
   if (!inviteCode || !step) {
       return { status: "error", message: "Invite code or step is missing."}
   }
 
   try {
-    let photoDataUri: string;
-    
     if (step === 1) {
       if (!photo || !(photo instanceof File)) {
         throw new Error("A photo must be provided in step 1.");
       }
-      const buffer = Buffer.from(await photo.arrayBuffer());
-      photoDataUri = `data:${photo.type};base64,${buffer.toString("base64")}`;
+      const photoDataUri = `data:${photo.type};base64,${Buffer.from(await photo.arrayBuffer()).toString("base64")}`;
       
-      let imageUrlForNextStep: string;
+      let finalUrl: string;
       if (isFirebaseEnabled && storage) {
         const storagePath = `${inviteCode}/face-atlas.png`;
         const storageRef = ref(storage, storagePath);
         await uploadBytes(storageRef, photo, { contentType: photo.type });
-        imageUrlForNextStep = await getDownloadURL(storageRef);
+        finalUrl = await getDownloadURL(storageRef);
       } else {
-        imageUrlForNextStep = photoDataUri;
+        finalUrl = photoDataUri;
       }
       
-      return {
-        status: "success",
-        message: `Step 1 complete! ${isFirebaseEnabled ? 'Photo uploaded.' : '(Local Mode)'}`,
-        imageUrl: imageUrlForNextStep,
-      };
-    } 
-    
-    // For steps 2, 3, and 4
-    const previousImageUrl = validationResult.data.imageUrl;
+      return { status: "success", message: "Step 1 complete!", imageUrl: finalUrl };
+    }
 
-    if (previousImageUrl && previousImageUrl.startsWith('data:image')) {
-      // We are in local mode and have the data URI from the previous step.
-      photoDataUri = previousImageUrl;
-    } else if (isFirebaseEnabled && storage) {
-      // We are in deployed mode, fetch the image from Firebase Storage.
-      const storagePath = `${inviteCode}/face-atlas.png`;
-      const storageRef = ref(storage, storagePath);
-      const blob = await getBlob(storageRef);
-      const buffer = Buffer.from(await blob.arrayBuffer());
-      photoDataUri = `data:${blob.type};base64,${buffer.toString("base64")}`;
-    } else {
-      // This happens in local mode if the user skips step 1.
-      return {
-        status: "error",
-        message: "It looks like the photo from Step 1 was not provided. Please complete Step 1 first."
+    // For steps 2, 3, and 4, we use the base image uploaded in step 1.
+    if (!baseImageUrl) {
+      return { status: "error", message: "Base image from Step 1 is missing. Please complete Step 1 first." };
+    }
+
+    // Step 2: Test case - copy base image to a new location.
+    if (step === 2) {
+      let step2AssetUrl: string;
+      if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
+          const baseImageRef = ref(storage, baseImageUrl);
+          const blob = await getBlob(baseImageRef);
+          const newPath = `${inviteCode}/food-atlas.png`;
+          const newRef = ref(storage, newPath);
+          await uploadBytes(newRef, blob, { contentType: blob.type });
+          step2AssetUrl = await getDownloadURL(newRef);
+      } else {
+          // In local mode, just return the same data URI.
+          step2AssetUrl = baseImageUrl;
       }
+      return { status: "success", message: "Step 2 preview generated.", imageUrl: step2AssetUrl };
+    }
+
+    // Steps 3 & 4: AI Generation
+    let photoDataUri: string;
+    if (baseImageUrl.startsWith('data:image')) {
+      photoDataUri = baseImageUrl;
+    } else if (isFirebaseEnabled && storage) {
+      const storageRef = ref(storage, baseImageUrl);
+      const blob = await getBlob(storageRef);
+      photoDataUri = `data:${blob.type};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`;
+    } else {
+      throw new Error("Could not retrieve base image for AI generation.");
     }
     
     const preferences = formatPreferencesForAI(validationResult.data);
@@ -267,11 +272,11 @@ export async function generateMeGotchiAsset(
     return {
       status: "success",
       message: isFinalStep ? "Your Me-Gotchi has been created!" : `Step ${step} preview generated successfully!`,
-      imageUrl: finalAssetUrlForUI, // This is the AI-generated asset for the UI
+      imageUrl: finalAssetUrlForUI,
     };
 
   } catch (error) {
-    console.error("Error in generateMeGotchiAsset server action:", error);
+    console.error(`Error in generateMeGotchiAsset (Step ${step}):`, error);
     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
     return {
       status: "error",
