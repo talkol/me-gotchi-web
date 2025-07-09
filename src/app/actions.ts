@@ -27,11 +27,11 @@ const EnvironmentItemSchema = z.object({
 const OnboardingSchema = z.object({
   firstName: z.preprocess(
     (val) => (val === null ? undefined : val),
-    z.string().min(1, "First name is required.").max(11, "First name must be 11 characters or less.")
+    z.string().min(1, "First name is required.").max(11, "First name must be 11 characters or less.").optional()
   ),
   gender: z.preprocess(
     (val) => (val === null ? undefined : val),
-    z.enum(["male", "female"], { invalid_type_error: "Please select a gender." })
+    z.enum(["male", "female"], { invalid_type_error: "Please select a gender." }).optional()
   ),
   age: z.preprocess(
     (val) => (val === "" || val === null ? undefined : val),
