@@ -505,10 +505,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     }
   }, [state, toast, setError, setValue]);
 
-  const handleNext = async () => {
-    const isStepValid = await trigger(STEPS[currentStep - 1].fields as any);
-    if (!isStepValid) return;
-
+  const handleNext = () => {
     if (currentStep < 5) {
       setCurrentStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -576,9 +573,15 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
             </div>
 
             <div className={`mt-8 flex items-center ${currentStep === 5 ? 'justify-center' : 'justify-between'}`}>
-                <Button type="button" variant="outline" onClick={handlePrevious} className={currentStep === 1 ? 'invisible' : 'visible'}>
+                <Button type="button" variant="outline" onClick={handlePrevious} className={currentStep === 1 || currentStep === 5 ? 'invisible' : 'visible'}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                 </Button>
+
+                {currentStep === 5 && (
+                     <Button type="button" variant="outline" onClick={handlePrevious}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                    </Button>
+                )}
                 
                 {currentStep < 4 && (
                     <Button type="button" size="lg" onClick={handleNext} disabled={!stepImageUrls[currentStep] || isGenerating}>
