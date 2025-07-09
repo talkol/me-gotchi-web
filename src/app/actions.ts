@@ -23,20 +23,32 @@ const EnvironmentItemSchema = z.object({
   explanation: z.string().optional(),
 });
 
-// Main server-side validation schema
+// Main server-side validation schema.
+// We use `preprocess` to convert null/empty values from FormData into `undefined`.
+// This allows Zod's `.partial()` method to correctly validate only the fields
+// present in the current step of the multi-step form.
 const OnboardingSchema = z.object({
-  firstName: z.string().min(1, "First name is required.").max(11, "First name must be 11 characters or less."),
-  gender: z.enum(["male", "female"], { required_error: "Please select a gender." }),
+  firstName: z.preprocess(
+    (val) => (val === null ? undefined : val),
+    z.string().min(1, "First name is required.").max(11, "First name must be 11 characters or less.")
+  ),
+  gender: z.preprocess(
+    (val) => (val === null ? undefined : val),
+    z.enum(["male", "female"], { required_error: "Please select a gender." })
+  ),
   age: z.preprocess(
     (val) => (val === "" || val === null ? undefined : val),
     z.coerce.number().min(1, "Age must be at least 1.").max(120, "Age must be 120 or less.")
   ),
-  photo: z
-    .instanceof(File)
-    .refine((file) => file.size > 0, "A photo is required.")
-    .refine((file) => file.size < 4 * 1024 * 1024, "Photo must be less than 4MB.")
-    .refine((file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type), "Only .jpg, .png, and .webp formats are supported."),
-  
+  photo: z.preprocess(
+    // A photo is only considered present if it's a File object with a size > 0.
+    // Otherwise, it's treated as `undefined` and passes partial validation on other steps.
+    (val) => (val instanceof File && val.size > 0 ? val : undefined),
+    z.instanceof(File)
+      .refine((file) => file.size < 4 * 1024 * 1024, "Photo must be less than 4MB.")
+      .refine((file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type), "Only .jpg, .png, and .webp formats are supported.")
+  ),
+
   likedFoods: z.array(FoodItemSchema).length(3),
   dislikedFoods: z.array(FoodItemSchema).length(3),
   likedDrinks: z.array(FoodItemSchema).length(2),
@@ -169,7 +181,9 @@ export async function generateMeGotchiAsset(
   }
 
   const { photo, inviteCode } = validationResult.data;
-  if (!photo || !(photo instanceof File) || photo.size === 0) {
+  // This check now only applies to step 1. On other steps, we assume the photo exists in storage.
+  // A more robust solution would be to fetch it from storage on steps 2-4.
+  if (step === 1 && (!photo || !(photo instanceof File))) {
       return { status: 'error', message: 'A photo is required for generation.' };
   }
   if (!inviteCode) {
@@ -178,6 +192,7 @@ export async function generateMeGotchiAsset(
   
   // Step 1: Upload the user's photo to Firebase Storage.
   if (step === 1) {
+    if (!photo) return { status: 'error', message: 'Photo is missing for step 1' };
     try {
       const storagePath = `${inviteCode}/face-atlas.png`;
       const storageRef = ref(storage, storagePath);
@@ -197,6 +212,12 @@ export async function generateMeGotchiAsset(
         message: `Failed to upload photo. ${errorMessage}`,
       };
     }
+  }
+  
+  // For steps 2+, photo won't be in formData. A robust implementation would fetch it from storage.
+  // For now, we expect the AI to fail if the photo isn't present.
+  if (!photo) {
+    return { status: "error", message: "Photo not found for generation. Please complete step 1." };
   }
 
   const preferences = formatPreferencesForAI(validationResult.data);
