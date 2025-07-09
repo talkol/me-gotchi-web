@@ -24,9 +24,6 @@ const EnvironmentItemSchema = z.object({
 });
 
 // Main server-side validation schema.
-// We use `preprocess` to convert null/empty values from FormData into `undefined`.
-// This allows Zod's `.partial()` method to correctly validate only the fields
-// present in the current step of the multi-step form.
 const OnboardingSchema = z.object({
   firstName: z.preprocess(
     (val) => (val === null ? undefined : val),
@@ -38,15 +35,14 @@ const OnboardingSchema = z.object({
   ),
   age: z.preprocess(
     (val) => (val === "" || val === null ? undefined : val),
-    z.coerce.number().min(1, "Age must be at least 1.").max(120, "Age must be 120 or less.")
+    z.coerce.number().min(1, "Age must be at least 1.").max(120, "Age must be 120 or less.").optional()
   ),
   photo: z.preprocess(
-    // A photo is only considered present if it's a File object with a size > 0.
-    // Otherwise, it's treated as `undefined` and passes partial validation on other steps.
     (val) => (val instanceof File && val.size > 0 ? val : undefined),
     z.instanceof(File)
       .refine((file) => file.size < 4 * 1024 * 1024, "Photo must be less than 4MB.")
       .refine((file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type), "Only .jpg, .png, and .webp formats are supported.")
+      .optional()
   ),
 
   likedFoods: z.array(FoodItemSchema).length(3),
@@ -170,10 +166,18 @@ export async function generateMeGotchiAsset(
   // 1. Validate form data
   const validationResult = OnboardingSchema.partial().safeParse(rawFormData);
   if (!validationResult.success) {
+    const flatErrors = validationResult.error.flatten();
+    const errorMessages = Object.entries(flatErrors.fieldErrors)
+        .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+        .join('; ');
+
+    const detailedMessage = `Server validation failed. Errors: ${errorMessages}`;
+    console.error(detailedMessage, flatErrors);
+
     return {
       status: "error",
-      message: "Validation failed on the server. Please check your inputs.",
-      validationErrors: validationResult.error.flatten().fieldErrors,
+      message: detailedMessage,
+      validationErrors: flatErrors.fieldErrors,
     };
   }
   
@@ -187,7 +191,6 @@ export async function generateMeGotchiAsset(
     const storagePath = `${inviteCode}/face-atlas.png`;
     const storageRef = ref(storage, storagePath);
 
-    // 2. Handle photo: Upload on step 1, fetch from storage on subsequent steps.
     if (step === 1) {
       if (!photo || !(photo instanceof File)) {
         throw new Error("A photo must be provided in step 1.");
@@ -195,16 +198,27 @@ export async function generateMeGotchiAsset(
       await uploadBytes(storageRef, photo, { contentType: photo.type });
       const buffer = Buffer.from(await photo.arrayBuffer());
       photoDataUri = `data:${photo.type};base64,${buffer.toString("base64")}`;
-    } else {
-      const blob = await getBlob(storageRef);
-      const buffer = Buffer.from(await blob.arrayBuffer());
-      photoDataUri = `data:${blob.type};base64,${buffer.toString("base64")}`;
-    }
+
+      const downloadUrl = await getDownloadURL(storageRef);
+       return {
+          status: "success",
+          message: "Step 1 complete! Photo uploaded.",
+          imageUrl: downloadUrl,
+      };
+
+    } 
+    // This logic runs for steps 2, 3, and 4
+    const blob = await getBlob(storageRef);
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    photoDataUri = `data:${blob.type};base64,${buffer.toString("base64")}`;
     
-    // 3. Generate preferences for AI based on all submitted data
+    // Generate preferences for AI based on all submitted data so far.
+    // We need to fetch the complete data, not just what's in the current step's form.
+    // This is a simplified example; a real app might store partial form state in a database.
+    // For now, we'll rely on what's available in `validationResult.data`.
     const preferences = formatPreferencesForAI(validationResult.data);
     
-    // 4. Call AI to generate asset
+    // Call AI to generate asset
     const aiResult = await generateAssets({
       preferences,
       photoDataUri,
@@ -214,10 +228,8 @@ export async function generateMeGotchiAsset(
       throw new Error("AI failed to generate an asset URL.");
     }
     
-    // 5. Handle the result based on the current step
     const isFinalStep = step === 4;
     if (isFinalStep) {
-        // On final step, upload the AI asset to its final destination
         const imageResponse = await fetch(aiResult.assetUrl);
         if (!imageResponse.ok) {
             throw new Error(`Failed to download the generated asset from AI provider. Status: ${imageResponse.statusText}`);
@@ -236,7 +248,6 @@ export async function generateMeGotchiAsset(
         };
 
     } else {
-        // For intermediate steps, return the AI-generated data URI directly for preview
         return {
             status: "success",
             message: `Step ${step} preview generated successfully!`,
@@ -245,8 +256,8 @@ export async function generateMeGotchiAsset(
     }
 
   } catch (error) {
-    console.error("Error in generateMeGotchiAsset:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during asset generation.";
+    console.error("Error in generateMeGotchiAsset server action:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
     return {
       status: "error",
       message: `Action failed: ${errorMessage}`,
