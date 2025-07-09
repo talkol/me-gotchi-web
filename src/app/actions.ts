@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import { generateAssets } from "@/ai/flows/generate-assets";
-import { storage } from "@/lib/firebase";
+import { isFirebaseEnabled, storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL, getBlob } from "firebase/storage";
 
 // Define schemas for reusable parts
@@ -59,6 +59,7 @@ const OnboardingSchema = z.object({
   
   inviteCode: z.string().min(1, "Invite code is required."),
   step: z.coerce.number().min(1).max(4),
+  imageUrl: z.string().optional(), // This now carries state between steps
 });
 
 export type FormState = {
@@ -152,6 +153,7 @@ export async function generateMeGotchiAsset(
     photo: formData.get("photo"),
     inviteCode: formData.get("inviteCode"),
     step: formData.get("step"),
+    imageUrl: formData.get("imageUrl"),
     likedFoods: parseArrayFromFormData(formData, 'likedFoods', 3),
     dislikedFoods: parseArrayFromFormData(formData, 'dislikedFoods', 3),
     likedDrinks: parseArrayFromFormData(formData, 'likedDrinks', 2),
@@ -188,46 +190,54 @@ export async function generateMeGotchiAsset(
 
   try {
     let photoDataUri: string;
-    const storagePath = `${inviteCode}/face-atlas.png`;
-    const storageRef = ref(storage, storagePath);
-
+    
     if (step === 1) {
       if (!photo || !(photo instanceof File)) {
         throw new Error("A photo must be provided in step 1.");
       }
-      await uploadBytes(storageRef, photo, { contentType: photo.type });
       const buffer = Buffer.from(await photo.arrayBuffer());
       photoDataUri = `data:${photo.type};base64,${buffer.toString("base64")}`;
-
-      const downloadUrl = await getDownloadURL(storageRef);
-       return {
-          status: "success",
-          message: "Step 1 complete! Photo uploaded.",
-          imageUrl: downloadUrl,
+      
+      let imageUrlForNextStep: string;
+      if (isFirebaseEnabled && storage) {
+        const storagePath = `${inviteCode}/face-atlas.png`;
+        const storageRef = ref(storage, storagePath);
+        await uploadBytes(storageRef, photo, { contentType: photo.type });
+        imageUrlForNextStep = await getDownloadURL(storageRef);
+      } else {
+        imageUrlForNextStep = photoDataUri;
+      }
+      
+      return {
+        status: "success",
+        message: `Step 1 complete! ${isFirebaseEnabled ? 'Photo uploaded.' : '(Local Mode)'}`,
+        imageUrl: imageUrlForNextStep,
       };
-
     } 
-    // This logic runs for steps 2, 3, and 4
-    try {
-        const blob = await getBlob(storageRef);
-        const buffer = Buffer.from(await blob.arrayBuffer());
-        photoDataUri = `data:${blob.type};base64,${buffer.toString("base64")}`;
-    } catch(e) {
-        // If the blob doesn't exist, it means user skipped step 1 and went straight to another step.
-        // This is a developer error, but we can handle it gracefully.
-        return {
-            status: "error",
-            message: "It looks like the photo from Step 1 was not uploaded. Please complete Step 1 first."
-        }
+    
+    // For steps 2, 3, and 4
+    const previousImageUrl = validationResult.data.imageUrl;
+
+    if (previousImageUrl && previousImageUrl.startsWith('data:image')) {
+      // We are in local mode and have the data URI from the previous step.
+      photoDataUri = previousImageUrl;
+    } else if (isFirebaseEnabled && storage) {
+      // We are in deployed mode, fetch the image from Firebase Storage.
+      const storagePath = `${inviteCode}/face-atlas.png`;
+      const storageRef = ref(storage, storagePath);
+      const blob = await getBlob(storageRef);
+      const buffer = Buffer.from(await blob.arrayBuffer());
+      photoDataUri = `data:${blob.type};base64,${buffer.toString("base64")}`;
+    } else {
+      // This happens in local mode if the user skips step 1.
+      return {
+        status: "error",
+        message: "It looks like the photo from Step 1 was not provided. Please complete Step 1 first."
+      }
     }
     
-    // Generate preferences for AI based on all submitted data so far.
-    // We need to fetch the complete data, not just what's in the current step's form.
-    // This is a simplified example; a real app might store partial form state in a database.
-    // For now, we'll rely on what's available in `validationResult.data`.
     const preferences = formatPreferencesForAI(validationResult.data);
     
-    // Call AI to generate asset
     const aiResult = await generateAssets({
       preferences,
       photoDataUri,
@@ -238,7 +248,9 @@ export async function generateMeGotchiAsset(
     }
     
     const isFinalStep = step === 4;
-    if (isFinalStep) {
+    let finalAssetUrlForUI = aiResult.assetUrl;
+
+    if (isFinalStep && isFirebaseEnabled && storage) {
         const imageResponse = await fetch(aiResult.assetUrl);
         if (!imageResponse.ok) {
             throw new Error(`Failed to download the generated asset from AI provider. Status: ${imageResponse.statusText}`);
@@ -249,20 +261,14 @@ export async function generateMeGotchiAsset(
         const finalAssetRef = ref(storage, finalAssetPath);
         await uploadBytes(finalAssetRef, imageBlob, { contentType: 'image/png' });
 
-        const finalUrl = await getDownloadURL(finalAssetRef);
-        return {
-          status: "success",
-          message: "Your Me-Gotchi has been created!",
-          imageUrl: finalUrl,
-        };
-
-    } else {
-        return {
-            status: "success",
-            message: `Step ${step} preview generated successfully!`,
-            imageUrl: aiResult.assetUrl,
-        };
+        finalAssetUrlForUI = await getDownloadURL(finalAssetRef);
     }
+    
+    return {
+      status: "success",
+      message: isFinalStep ? "Your Me-Gotchi has been created!" : `Step ${step} preview generated successfully!`,
+      imageUrl: finalAssetUrlForUI, // This is the AI-generated asset for the UI
+    };
 
   } catch (error) {
     console.error("Error in generateMeGotchiAsset server action:", error);

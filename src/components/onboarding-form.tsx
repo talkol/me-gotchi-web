@@ -59,6 +59,7 @@ const OnboardingFormSchema = z.object({
   environments: z.array(EnvironmentItemSchema).length(4),
   inviteCode: z.string().min(1),
   step: z.coerce.number().min(1).max(4),
+  imageUrl: z.string().optional(),
 });
 type OnboardingFormData = z.infer<typeof OnboardingFormSchema>;
 
@@ -71,11 +72,11 @@ const STEPS = [
 
 function GenerateButton({ isGenerating, isSuccess }: { isGenerating: boolean; isSuccess: boolean }) {
   return (
-    <Button type="submit" size="lg" className="w-full font-bold" disabled={isGenerating || isSuccess}>
+    <Button type="submit" size="lg" className="w-full font-bold" disabled={isGenerating}>
       {isGenerating ? (
         <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
       ) : isSuccess ? (
-        <><CheckCircle className="mr-2 h-4 w-4" /> Generated!</>
+        <><CheckCircle className="mr-2 h-4 w-4" /> Generated! Click to Regenerate</>
       ) : (
         <><Wand2 className="mr-2 h-4 w-4" /> Generate</>
       )}
@@ -84,8 +85,13 @@ function GenerateButton({ isGenerating, isSuccess }: { isGenerating: boolean; is
 }
 
 const AssetPreview = ({ state, isGenerating }: { state: FormState; isGenerating: boolean }) => {
+    // Show the new image if the generation was successful, otherwise keep showing the old one during generation.
+    const imageUrl = state.status === 'success' ? state.imageUrl : (state.status === 'generating' ? prevState?.imageUrl : state.imageUrl);
+    const prevState = useActionState(generateMeGotchiAsset, { status: "idle", message: "" })[0];
+
+
     const AssetDisplay = useMemo(() => {
-        if (state.status === 'success' && state.imageUrl) {
+        if (state.imageUrl) {
             return <Image src={state.imageUrl} alt="Generated Me-Gotchi Asset" width={512} height={512} className="rounded-lg object-cover w-full h-full" data-ai-hint="avatar character" />;
         }
         if (isGenerating) {
@@ -183,7 +189,7 @@ const StepCard = ({ title, children, state, isGenerating, isFinalStep = false }:
                         <p className="text-xs text-muted-foreground text-center">
                             {isFinalStep
                                 ? "Press 'Generate' to create your final Me-Gotchi. The asset will be stored and become available in the game."
-                                : "Press 'Generate' to preview your Me-Gotchi. You can generate again if you're not happy with the result."
+                                : "Press 'Generate' to preview your Me-Gotchi. You can generate again if you're not happy with the result. The next step will unlock upon successful generation."
                             }
                         </p>
                     </div>
@@ -375,6 +381,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       photo: undefined,
       inviteCode: inviteCode,
       step: 1,
+      imageUrl: "",
       likedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
       dislikedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
       likedDrinks: [...Array(2)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
@@ -406,10 +413,15 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         });
       }
     }
-    if (state.status === "success" && currentStep === 4) {
-      toast({ title: "Success!", description: state.message });
+    if (state.status === "success") {
+       setValue("imageUrl", state.imageUrl || "");
+       if (currentStep === 1) { // On step 1, the AI result is the user's photo, show it.
+         // no toast
+       } else if (currentStep === 4) { // Final step toast
+         toast({ title: "Success!", description: state.message });
+       }
     }
-  }, [state, toast, setError, currentStep]);
+  }, [state, toast, setError, setValue, currentStep]);
 
   const handleNext = async () => {
     setCurrentStep((prev) => prev + 1);
@@ -440,6 +452,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             <input type="hidden" {...form.register("inviteCode")} />
             <input type="hidden" {...form.register("step")} />
+            <input type="hidden" {...form.register("imageUrl")} />
 
             <div className={currentStep === 1 ? 'block' : 'hidden'}>
                 <StepCard title="Step 1: Your Likeness" state={state} isGenerating={isGenerating}>
