@@ -2,9 +2,7 @@
 "use server";
 
 import { z } from "zod";
-import { generateAssetsFood } from "@/ai/flows/generate-assets-food";
-import { generateAssetsActivities } from "@/ai/flows/generate-assets-activities";
-import { generateAssetsEnvironments } from "@/ai/flows/generate-assets-environments";
+import { generateFoodAsset, generateActivitiesAsset, generateEnvironmentsAsset } from "@/ai/services";
 import { isFirebaseEnabled, storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -92,57 +90,6 @@ function parseArrayFromFormData<T>(formData: FormData, key: string, count: numbe
   return arr as T[];
 }
 
-// Helper to format preferences for the AI, now handles partial data
-function formatPreferencesForAI(data: Partial<z.infer<typeof OnboardingSchema>>): string {
-    let preferences = ``;
-    if(data.firstName && data.age && data.gender) {
-        preferences += `User's name is ${data.firstName}, a ${data.age} year old ${data.gender}.\n\n`;
-    }
-
-    const formatList = (title: string, items?: { name?: string, explanation?: string }[]) => {
-        if (!items) return "";
-        const filteredItems = items.filter(item => (item.name && item.name.trim()) || (item.explanation && item.explanation.trim()));
-        if (filteredItems.length === 0) return "";
-
-        let listString = `${title}:\n`;
-        filteredItems.forEach(item => {
-            if (item.name && item.name.trim()) {
-              listString += `- ${item.name.trim()}`;
-              if (item.explanation && item.explanation.trim()) {
-                  listString += `: ${item.explanation.trim()}`;
-              }
-              listString += '\n';
-            }
-        });
-        return listString + '\n';
-    };
-    
-    const formatEnvList = (title: string, items?: { explanation?: string }[]) => {
-        if (!items) return "";
-        const filteredItems = items.filter(item => item.explanation && item.explanation.trim());
-        if (filteredItems.length === 0) return "";
-        let listString = `${title}:\n`;
-        filteredItems.forEach(item => {
-            listString += `- ${item.explanation!.trim()}\n`;
-        });
-        return listString + '\n';
-    }
-    
-    const gender = data.gender || 'male';
-
-    preferences += formatList(gender === 'male' ? "He likes to eat" : "She likes to eat", data.likedFoods);
-    preferences += formatList(gender === 'male' ? "He dislikes eating" : "She dislikes eating", data.dislikedFoods);
-    preferences += formatList(gender === 'male' ? "He likes to drink" : "She likes to drink", data.likedDrinks);
-    preferences += formatList(gender === 'male' ? "He dislikes drinking" : "She dislikes drinking", data.dislikedDrinks);
-    preferences += formatList(gender === 'male' ? "He enjoys these fun activities" : "She enjoys these fun activities", data.likedFunActivities);
-    preferences += formatList(gender === 'male' ? "He dislikes these fun activities" : "She dislikes these fun activities", data.dislikedFunActivities);
-    preferences += formatList(gender === 'male' ? "He likes these exercises" : "She likes these exercises", data.likedExerciseActivities);
-    preferences += formatList(gender === 'male' ? "He dislikes this exercise" : "She dislikes this exercise", data.dislikedExerciseActivities);
-    preferences += formatEnvList("He/She is often found in these environments", data.environments);
-    
-    return preferences.trim() || "A generic character.";
-}
-
 export async function generateMeGotchiAsset(
   formData: FormData
 ): Promise<FormState> {
@@ -212,20 +159,18 @@ export async function generateMeGotchiAsset(
       return { status: "error", message: "Base image from Step 1 is missing. Please complete Step 1 first." };
     }
 
-    const preferences = formatPreferencesForAI(validationResult.data);
-
     if (step === 2) {
-      const result = await generateAssetsFood({ inviteCode, baseImageUrl, preferences });
+      const result = await generateFoodAsset(baseImageUrl, inviteCode);
       return { status: "success", message: "Step 2 preview generated.", imageUrl: result.assetUrl };
     }
 
     if (step === 3) {
-      const result = await generateAssetsActivities({ inviteCode, baseImageUrl, preferences });
+      const result = await generateActivitiesAsset(baseImageUrl, inviteCode);
       return { status: "success", message: "Step 3 preview generated.", imageUrl: result.assetUrl };
     }
     
     if (step === 4) {
-      const result = await generateAssetsEnvironments({ inviteCode, baseImageUrl, preferences });
+      const result = await generateEnvironmentsAsset(baseImageUrl, inviteCode);
       return { status: "success", message: "Step 4 assets generated.", imageUrl: result.assetUrl };
     }
 

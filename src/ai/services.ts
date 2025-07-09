@@ -1,0 +1,94 @@
+'use server';
+
+import { isFirebaseEnabled, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL, getBlob } from 'firebase/storage';
+import OpenAI from 'openai';
+
+// --- Asset Generation Functions (Test Logic) ---
+
+async function copyAsset(
+  baseImageUrl: string,
+  inviteCode: string,
+  newFileName: string
+): Promise<string> {
+  if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
+    const baseImageRef = ref(storage, baseImageUrl);
+    const blob = await getBlob(baseImageRef);
+    const newPath = `${inviteCode}/${newFileName}`;
+    const newRef = ref(storage, newPath);
+    await uploadBytes(newRef, blob, { contentType: blob.type });
+    return getDownloadURL(newRef);
+  }
+  return baseImageUrl; // Fallback for local mode
+}
+
+export async function generateFoodAsset(
+  baseImageUrl: string,
+  inviteCode: string
+): Promise<{ assetUrl: string }> {
+  const assetUrl = await copyAsset(baseImageUrl, inviteCode, 'food-atlas.png');
+  return { assetUrl };
+}
+
+export async function generateActivitiesAsset(
+  baseImageUrl: string,
+  inviteCode: string
+): Promise<{ assetUrl:string }> {
+  const assetUrl = await copyAsset(baseImageUrl, inviteCode, 'activities-atlas.png');
+  return { assetUrl };
+}
+
+export async function generateEnvironmentsAsset(
+  baseImageUrl: string,
+  inviteCode: string
+): Promise<{ assetUrl:string }> {
+   if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
+        const baseImageRef = ref(storage, baseImageUrl);
+        const blob = await getBlob(baseImageRef);
+        
+        let firstUrl: string | null = null;
+        for (let i = 1; i <= 4; i++) {
+            const newPath = `${inviteCode}/background${i}.png`;
+            const newRef = ref(storage, newPath);
+            await uploadBytes(newRef, blob, { contentType: 'image/png' });
+            if (i === 1) {
+                firstUrl = await getDownloadURL(newRef);
+            }
+        }
+        if (!firstUrl) {
+          throw new Error("Could not get URL for the first background image.");
+        }
+        return { assetUrl: firstUrl };
+    }
+    return { assetUrl: baseImageUrl }; // Fallback for local mode
+}
+
+// --- OpenAI Specific Functions ---
+
+export async function validateOpenAiApiKey(
+  apiKey: string
+): Promise<{ isValid: boolean; errorMessage?: string }> {
+  if (!apiKey) {
+    return { isValid: false, errorMessage: 'API key cannot be empty.' };
+  }
+
+  try {
+    const openai = new OpenAI({ apiKey });
+    await openai.models.list();
+    return { isValid: true };
+  } catch (error: any) {
+    console.error('Error validating OpenAI API key:', error);
+    let message = 'An error occurred while validating the API key.';
+    if (error instanceof OpenAI.APIError) {
+      if (error.status === 401) {
+        message = 'The provided OpenAI API key is invalid or has been revoked.';
+      } else {
+        message = `An API error occurred: ${error.message}`;
+      }
+    }
+    return {
+      isValid: false,
+      errorMessage: message,
+    };
+  }
+}
