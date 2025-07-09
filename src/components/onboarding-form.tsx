@@ -27,12 +27,12 @@ type OnboardingFormProps = {
 
 // Client-side Zod schema
 const FoodItemSchema = z.object({
-  name: z.string().max(11, "Max 11 chars"),
+  name: z.string().min(1, "This field is required.").max(11, "Max 11 chars"),
   addExplanation: z.boolean(),
   explanation: z.string(),
 });
 const ActivityItemSchema = z.object({
-  name: z.string().max(11, "Max 11 chars"),
+  name: z.string().min(1, "This field is required.").max(11, "Max 11 chars"),
   addExplanation: z.boolean(),
   explanation: z.string(),
 });
@@ -476,7 +476,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
             <input type="hidden" {...form.register("imageUrl")} />
 
             <div className={currentStep === 1 ? 'block' : 'hidden'}>
-                <StepCard title="Step 1: Your Likeness" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} imageUrl={stepImageUrls[1]}>
+                <StepCard title="Step 1: Your Likeness" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} imageUrl={stepImageUrls[1] ?? watch('imageUrl')}>
                     <Step1 control={control} watch={watch} />
                 </StepCard>
             </div>
