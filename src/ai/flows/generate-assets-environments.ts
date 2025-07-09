@@ -1,24 +1,21 @@
 'use server';
 
 /**
- * @fileOverview An AI agent that generates personalized digital assets based on user input and uploaded photo.
+ * @fileOverview An AI agent that generates personalized digital assets for environments.
  *
  * - generateAssetsEnvironments - A function that handles the asset generation process.
  * - GenerateAssetsInput - The input type for the generateAssetsEnvironments function.
  * - GenerateAssetsOutput - The return type for the generateAssetsEnvironments function.
  */
 
-'use server';
-
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { isFirebaseEnabled, storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL, getBlob } from "firebase/storage";
-import { parseArrayFromFormData } from "@/app/actions"; // Assuming this helper is available
 
 const GenerateAssetsInputSchema = z.object({
   inviteCode: z.string(),
-  photoDataUri: z
+  baseImageUrl: z
     .string()
     .describe(
       "A photo of the user, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
@@ -33,7 +30,7 @@ const GenerateAssetsOutputSchema = z.object({
 export type GenerateAssetsOutput = z.infer<typeof GenerateAssetsOutputSchema>;
 
 export async function generateAssetsEnvironments(input: GenerateAssetsInput): Promise<GenerateAssetsOutput> {
-  return generateAssetsFlowActivities.run(input);
+  return generateAssetsFlowEnvironments(input);
 }
 
 const generateAssetsPromptEnvironments = ai.definePrompt({
@@ -45,7 +42,7 @@ const generateAssetsPromptEnvironments = ai.definePrompt({
   Based on the user's photo and preferences, generate a unique digital asset.
 
   User Preferences: {{{preferences}}}
-  User Photo: {{media url=photoDataUri}}
+  User Photo: {{media url=baseImageUrl}}
   `,
   config: {
     safetySettings: [
@@ -72,28 +69,30 @@ const generateAssetsPromptEnvironments = ai.definePrompt({
 const generateAssetsFlowEnvironments = ai.defineFlow(
   {
     name: 'generateAssetsFlowEnvironments',
-    inputSchema: z.instanceof(FormData), // Accept FormData directly
+    inputSchema: GenerateAssetsInputSchema,
     outputSchema: GenerateAssetsOutputSchema,
   },
-  async input => {
-    const inviteCode = input.get('inviteCode') as string;
-    const baseImageUrl = input.get('imageUrl') as string;
-
-    if (!inviteCode || !baseImageUrl) {
-        throw new Error("Invite code or base image URL is missing.");
-    }
-
-    let step3AssetUrl: string;
+  async ({ inviteCode, baseImageUrl, preferences }) => {
     if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
         const baseImageRef = ref(storage, baseImageUrl);
         const blob = await getBlob(baseImageRef);
-        const newPath = `${inviteCode}/activities-atlas.png`;
-        const newRef = ref(storage, newPath);
-        await uploadBytes(newRef, blob, { contentType: blob.type });
-        step3AssetUrl = await getDownloadURL(newRef);
+        
+        let firstUrl: string | null = null;
+        for (let i = 1; i <= 4; i++) {
+            const newPath = `${inviteCode}/background${i}.png`;
+            const newRef = ref(storage, newPath);
+            await uploadBytes(newRef, blob, { contentType: 'image/png' });
+            if (i === 1) {
+                firstUrl = await getDownloadURL(newRef);
+            }
+        }
+        if (!firstUrl) {
+          throw new Error("Could not get URL for the first background image.");
+        }
+        return { assetUrl: firstUrl };
     } else {
-        step3AssetUrl = baseImageUrl; // In local mode, just return the same data URI.
+        // In local mode, just return the same data URI.
+        return { assetUrl: baseImageUrl };
     }
-    return { assetUrl: step3AssetUrl };
   }
 );

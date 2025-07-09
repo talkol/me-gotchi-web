@@ -17,7 +17,7 @@ const GenerateAssetsInputSchema = z.object({
   baseImageUrl: z.string(), // URL or data URI of the base image from step 1
   preferences: z.string().describe('User food preferences for the assets.'),
 });
-type GenerateAssetsInput = z.infer<typeof GenerateAssetsInputSchema>;
+export type GenerateAssetsInput = z.infer<typeof GenerateAssetsInputSchema>;
 
 const GenerateAssetsOutputSchema = z.object({
   assetUrl: z.string().describe('The URL of the generated asset.'),
@@ -25,30 +25,16 @@ const GenerateAssetsOutputSchema = z.object({
 export type GenerateAssetsOutput = z.infer<typeof GenerateAssetsOutputSchema>;
 
 export async function generateAssetsFood(
-  formData: FormData,
+  input: GenerateAssetsInput
 ): Promise<GenerateAssetsOutput> {
-  const rawInput = {
-    inviteCode: formData.get('inviteCode'),
-    baseImageUrl: formData.get('imageUrl'), // imageUrl from form is baseImageUrl
-    preferences: formData.get('preferences'), // You'll need to add this to your form or derive it
-  };
-
-  // Validate input using the schema
-  const validationResult = GenerateAssetsInputSchema.safeParse(rawInput);
-
-  if (!validationResult.success) {
-    console.error('Validation failed for generateAssetsFood:', validationResult.error);
-    throw new Error('Invalid input for generating food assets.');
-  }
-
-  return generateAssetsFlowFood(validationResult.data);
+  return generateAssetsFlowFood(input);
 }
 
 const generateAssetsPromptFood = ai.definePrompt({
   name: 'generateAssetsPromptFood',
   input: {schema: GenerateAssetsInputSchema},
   output: {schema: GenerateAssetsOutputSchema},
-  prompt: `You are an AI assistant that generates personalized digital assets for the me-gotchi game, specifically for food.\n\n  Based on the user's photo and their food preferences, generate a unique digital asset related to food.\n\n  User Food Preferences: {{{preferences}}}\n  User Photo: {{media url=photoDataUri}}\n  `,
+  prompt: `You are an AI assistant that generates personalized digital assets for the me-gotchi game, specifically for food.\n\n  Based on the user's photo and their food preferences, generate a unique digital asset related to food.\n\n  User Food Preferences: {{{preferences}}}\n  User Photo: {{media url=baseImageUrl}}\n  `,
   config: {
     safetySettings: [
       {
@@ -77,9 +63,8 @@ const generateAssetsFlowFood = ai.defineFlow(
     inputSchema: GenerateAssetsInputSchema,
     outputSchema: GenerateAssetsOutputSchema,
   },
-  async input => {
+  async ({ inviteCode, baseImageUrl, preferences }) => {
     let step2AssetUrl: string;
-    const { inviteCode, baseImageUrl, preferences } = input;
 
     if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
       const baseImageRef = ref(storage, baseImageUrl);
@@ -91,9 +76,6 @@ const generateAssetsFlowFood = ai.defineFlow(
     } else {
       // In local mode, just return the same data URI.
       step2AssetUrl = baseImageUrl;
-      console.warn('Firebase not enabled or base image is not a Firebase URL. Returning base image URL for step 2.');
-      // TODO: In a real scenario, you would likely use the AI model here
-      // const { media } = await ai.generate({...});
     }
 
     return { assetUrl: step2AssetUrl };

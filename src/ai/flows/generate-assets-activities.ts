@@ -14,8 +14,8 @@ import { z } from 'genkit';
 
 const GenerateAssetsInputSchema = z.object({
   inviteCode: z.string(),
- baseImageUrl: z.string(),
- preferences: z.string().describe('The user preferences for the activities assets.'),
+  baseImageUrl: z.string(),
+  preferences: z.string().describe('The user preferences for the activities assets.'),
 });
 export type GenerateAssetsInput = z.infer<typeof GenerateAssetsInputSchema>;
 
@@ -78,13 +78,9 @@ const generateAssetsFlowActivities = ai.defineFlow(
       await uploadBytes(newRef, blob, { contentType: blob.type });
       step3AssetUrl = await getDownloadURL(newRef);
     } else {
-      // In local mode or if Firebase is not enabled, just use the base image data URI (if it is one)
+      // In local mode or if Firebase is not enabled, just use the base image data URI
       step3AssetUrl = baseImageUrl;
-
-      config: {
-        responseModalities: ['TEXT', 'IMAGE'], // MUST provide both TEXT and IMAGE, IMAGE only won't work
-      },
-    });
-    return {assetUrl: media.url!};
+    }
+    return {assetUrl: step3AssetUrl};
   }
 );

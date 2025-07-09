@@ -2,12 +2,11 @@
 "use server";
 
 import { z } from "zod";
-import { generateAssetsAppearance } from "@/ai/flows/generate-assets-appearance";
 import { generateAssetsFood } from "@/ai/flows/generate-assets-food";
 import { generateAssetsActivities } from "@/ai/flows/generate-assets-activities";
 import { generateAssetsEnvironments } from "@/ai/flows/generate-assets-environments";
 import { isFirebaseEnabled, storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL, getBlob } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // Define schemas for reusable parts
 const FoodItemSchema = z.object({
@@ -194,7 +193,6 @@ export async function generateMeGotchiAsset(
       if (!photo || !(photo instanceof File)) {
         throw new Error("A photo must be provided in step 1.");
       }
-      const photoDataUri = `data:${photo.type};base64,${Buffer.from(await photo.arrayBuffer()).toString("base64")}`;
       
       let finalUrl: string;
       if (isFirebaseEnabled && storage) {
@@ -203,76 +201,32 @@ export async function generateMeGotchiAsset(
         await uploadBytes(storageRef, photo, { contentType: photo.type });
         finalUrl = await getDownloadURL(storageRef);
       } else {
+        const photoDataUri = `data:${photo.type};base64,${Buffer.from(await photo.arrayBuffer()).toString("base64")}`;
         finalUrl = photoDataUri;
       }
       
       return { status: "success", message: "Step 1 complete!", imageUrl: finalUrl };
     }
 
-    // For steps 2, 3, and 4, we use the base image uploaded in step 1.
     if (!baseImageUrl) {
       return { status: "error", message: "Base image from Step 1 is missing. Please complete Step 1 first." };
     }
 
-    // Step 2: Test case - copy base image to a new location.
+    const preferences = formatPreferencesForAI(validationResult.data);
+
     if (step === 2) {
-      let step2AssetUrl: string;
-      if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
-          const baseImageRef = ref(storage, baseImageUrl);
-          const blob = await getBlob(baseImageRef);
-          const newPath = `${inviteCode}/food-atlas.png`;
-          const newRef = ref(storage, newPath);
-          await uploadBytes(newRef, blob, { contentType: blob.type });
-          step2AssetUrl = await getDownloadURL(newRef);
-      } else {
-          // In local mode, just return the same data URI.
-          step2AssetUrl = baseImageUrl;
-      }
-      return { status: "success", message: "Step 2 preview generated.", imageUrl: step2AssetUrl };
+      const result = await generateAssetsFood({ inviteCode, baseImageUrl, preferences });
+      return { status: "success", message: "Step 2 preview generated.", imageUrl: result.assetUrl };
     }
 
-    // Step 3: Test case - copy base image to a new location.
     if (step === 3) {
-      let step3AssetUrl: string;
-      if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
-          const baseImageRef = ref(storage, baseImageUrl);
-          const blob = await getBlob(baseImageRef);
-          const newPath = `${inviteCode}/activities-atlas.png`;
-          const newRef = ref(storage, newPath);
-          await uploadBytes(newRef, blob, { contentType: blob.type });
-          step3AssetUrl = await getDownloadURL(newRef);
-      } else {
-          // In local mode, just return the same data URI.
-          step3AssetUrl = baseImageUrl;
-      }
-      return { status: "success", message: "Step 3 preview generated.", imageUrl: step3AssetUrl };
+      const result = await generateAssetsActivities({ inviteCode, baseImageUrl, preferences });
+      return { status: "success", message: "Step 3 preview generated.", imageUrl: result.assetUrl };
     }
     
-    // Step 4: Test case - copy base image to 4 new locations.
     if (step === 4) {
-      let step4AssetUrl: string;
-      if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
-          const baseImageRef = ref(storage, baseImageUrl);
-          const blob = await getBlob(baseImageRef);
-          
-          let firstUrl: string | null = null;
-          for (let i = 1; i <= 4; i++) {
-              const newPath = `${inviteCode}/background${i}.png`;
-              const newRef = ref(storage, newPath);
-              await uploadBytes(newRef, blob, { contentType: 'image/png' });
-              if (i === 1) {
-                  firstUrl = await getDownloadURL(newRef);
-              }
-          }
-          if (!firstUrl) {
-            throw new Error("Could not get URL for the first background image.");
-          }
-           return { status: "success", message: "Step 4 assets generated.", imageUrl: firstUrl };
-      } else {
-          // In local mode, just return the same data URI.
-          step4AssetUrl = baseImageUrl;
-          return { status: "success", message: "Step 4 preview generated.", imageUrl: step4AssetUrl };
-      }
+      const result = await generateAssetsEnvironments({ inviteCode, baseImageUrl, preferences });
+      return { status: "success", message: "Step 4 assets generated.", imageUrl: result.assetUrl };
     }
 
     return { status: 'error', message: 'Invalid step provided.' };
