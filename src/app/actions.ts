@@ -31,7 +31,7 @@ const OnboardingSchema = z.object({
   ),
   gender: z.preprocess(
     (val) => (val === null ? undefined : val),
-    z.enum(["male", "female"], { required_error: "Please select a gender." })
+    z.enum(["male", "female"], { invalid_type_error: "Please select a gender." })
   ),
   age: z.preprocess(
     (val) => (val === "" || val === null ? undefined : val),
@@ -208,9 +208,18 @@ export async function generateMeGotchiAsset(
 
     } 
     // This logic runs for steps 2, 3, and 4
-    const blob = await getBlob(storageRef);
-    const buffer = Buffer.from(await blob.arrayBuffer());
-    photoDataUri = `data:${blob.type};base64,${buffer.toString("base64")}`;
+    try {
+        const blob = await getBlob(storageRef);
+        const buffer = Buffer.from(await blob.arrayBuffer());
+        photoDataUri = `data:${blob.type};base64,${buffer.toString("base64")}`;
+    } catch(e) {
+        // If the blob doesn't exist, it means user skipped step 1 and went straight to another step.
+        // This is a developer error, but we can handle it gracefully.
+        return {
+            status: "error",
+            message: "It looks like the photo from Step 1 was not uploaded. Please complete Step 1 first."
+        }
+    }
     
     // Generate preferences for AI based on all submitted data so far.
     // We need to fetch the complete data, not just what's in the current step's form.
