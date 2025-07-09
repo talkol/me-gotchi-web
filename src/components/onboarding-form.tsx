@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import { UploadCloud, Sparkles, AlertCircle, CheckCircle, Wand2, RefreshCw, ArrowLeft, ArrowRight } from "lucide-react";
 
 type OnboardingFormProps = {
@@ -81,7 +82,7 @@ function SubmitButton({ isSuccess }: { isSuccess: boolean }) {
   );
 }
 
-const AssetPreviewPane = ({ state, isFinalStep = false }: { state: FormState; isFinalStep?: boolean }) => {
+const AssetPreview = ({ state, isFinalStep }: { state: FormState; isFinalStep: boolean }) => {
     const { pending } = useFormStatus();
 
     const AssetDisplay = useMemo(() => {
@@ -98,24 +99,12 @@ const AssetPreviewPane = ({ state, isFinalStep = false }: { state: FormState; is
     }, [state, pending, isFinalStep]);
 
     return (
-        <Card className="shadow-lg flex flex-col">
-            <CardHeader>
-                <CardTitle className="font-headline text-2xl">Generated Asset</CardTitle>
-                <CardDescription>A preview of your Me-Gotchi will appear here after generation.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-                <div className="w-full aspect-square bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden">
-                    {AssetDisplay}
-                </div>
-            </CardContent>
-            {isFinalStep && (
-                <CardFooter>
-                    <SubmitButton isSuccess={state.status === 'success'} />
-                </CardFooter>
-            )}
-        </Card>
+        <div className="w-full max-w-md mx-auto aspect-square bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden">
+            {AssetDisplay}
+        </div>
     );
 };
+
 
 const PreferenceItem = ({
   control, name, index, watch, placeholderName, placeholderDescription,
@@ -188,56 +177,60 @@ const Step1 = ({ control, watch, state }: { control: Control<OnboardingFormData>
     }, [photoFile]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="shadow-lg">
-          <CardHeader><CardTitle className="font-headline text-2xl">Step 1: Your Likeness</CardTitle></CardHeader>
-          <CardContent className="space-y-6">
-            <FormField
-              control={control}
-              name="firstName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-base font-semibold">First Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your first name" {...field} className="text-base"/>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={control}
-                name="gender"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-base font-semibold">Gender</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+    <Card className="shadow-lg">
+      <CardHeader>
+        <CardTitle className="font-headline text-2xl">Step 1: Your Likeness</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+                <FormField
+                  control={control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-semibold">First Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Your first name" {...field} className="text-base"/>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold">Gender</FormLabel>
+                         <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={control}
+                    name="age"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold">Age</FormLabel>
                         <FormControl>
-                            <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                          <Input type="number" placeholder="e.g., 25" {...field} value={field.value ?? ''} className="text-base"/>
                         </FormControl>
-                        <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={control}
-                name="age"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-base font-semibold">Age</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g., 25" {...field} className="text-base"/>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
             </div>
             <FormField
               control={control}
@@ -246,10 +239,10 @@ const Step1 = ({ control, watch, state }: { control: Control<OnboardingFormData>
                 <FormItem>
                   <FormLabel className="text-base font-semibold">Your Photo</FormLabel>
                   <FormControl>
-                    <div className="relative flex items-center justify-center w-full">
+                    <div className="relative flex items-center justify-center w-full h-full min-h-[256px]">
                       <label
                         htmlFor="dropzone-file"
-                        className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${
+                        className={`flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${
                           fieldState.invalid ? 'border-destructive' : 'border-border'
                         }`}
                       >
@@ -279,10 +272,14 @@ const Step1 = ({ control, watch, state }: { control: Control<OnboardingFormData>
                 </FormItem>
               )}
             />
-          </CardContent>
-        </Card>
-        <AssetPreviewPane state={state} />
-    </div>
+        </div>
+        <Separator className="my-8" />
+        <div>
+            <h3 className="text-xl font-headline mb-4 text-center md:text-left">Generated Asset</h3>
+            <AssetPreview state={state} isFinalStep={false} />
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 const Step2 = ({ control, watch, state }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData>, state: FormState}) => {
@@ -291,10 +288,10 @@ const Step2 = ({ control, watch, state }: { control: Control<OnboardingFormData>
     const { fields: likedDrinks } = useFieldArray({ control, name: 'likedDrinks' });
     const { fields: dislikedDrinks } = useFieldArray({ control, name: 'dislikedDrinks' });
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="shadow-lg">
-          <CardHeader><CardTitle className="font-headline text-2xl">Step 2: Food Preferences</CardTitle></CardHeader>
-          <CardContent className="space-y-6">
+    <Card className="shadow-lg">
+      <CardHeader><CardTitle className="font-headline text-2xl">Step 2: Food Preferences</CardTitle></CardHeader>
+      <CardContent>
+        <div className="space-y-6">
             <div>
                 <h3 className="font-semibold text-lg mb-2">Foods You Like (3)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -319,10 +316,14 @@ const Step2 = ({ control, watch, state }: { control: Control<OnboardingFormData>
                     {dislikedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedDrinks" placeholderName="MILK" placeholderDescription="A glass of plain milk" />)}
                 </div>
             </div>
-          </CardContent>
-        </Card>
-        <AssetPreviewPane state={state} />
-    </div>
+        </div>
+        <Separator className="my-8" />
+        <div>
+            <h3 className="text-xl font-headline mb-4 text-center md:text-left">Generated Asset</h3>
+            <AssetPreview state={state} isFinalStep={false} />
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 const Step3 = ({ control, watch, state }: { control: Control<OnboardingFormData>, watch: UseFormWatch<OnboardingFormData>, state: FormState }) => {
@@ -331,10 +332,10 @@ const Step3 = ({ control, watch, state }: { control: Control<OnboardingFormData>
     const { fields: likedExercise } = useFieldArray({ control, name: 'likedExerciseActivities' });
     const { fields: dislikedExercise } = useFieldArray({ control, name: 'dislikedExerciseActivities' });
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="shadow-lg">
-          <CardHeader><CardTitle className="font-headline text-2xl">Step 3: Activity Preferences</CardTitle></CardHeader>
-          <CardContent className="space-y-6">
+    <Card className="shadow-lg">
+      <CardHeader><CardTitle className="font-headline text-2xl">Step 3: Activity Preferences</CardTitle></CardHeader>
+      <CardContent>
+        <div className="space-y-6">
             <div>
                 <h3 className="font-semibold text-lg mb-2">Fun Activities You Like (3)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -359,10 +360,14 @@ const Step3 = ({ control, watch, state }: { control: Control<OnboardingFormData>
                     {dislikedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedExerciseActivities" placeholderName="RUNNING" placeholderDescription="A person running on a treadmill" />)}
                 </div>
             </div>
-          </CardContent>
-        </Card>
-        <AssetPreviewPane state={state} />
-    </div>
+        </div>
+        <Separator className="my-8" />
+        <div>
+            <h3 className="text-xl font-headline mb-4 text-center md:text-left">Generated Asset</h3>
+            <AssetPreview state={state} isFinalStep={false} />
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -370,13 +375,13 @@ const Step4 = ({ control, state }: { control: Control<OnboardingFormData>, state
   const { fields: environments } = useFieldArray({ control, name: 'environments' });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl">Step 4: Environments</CardTitle>
-            <CardDescription>Describe 4 environments the person is normally found in.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+    <Card className="shadow-lg">
+      <CardHeader>
+        <CardTitle className="font-headline text-2xl">Step 4: Environments</CardTitle>
+        <CardDescription>Describe 4 environments the person is normally found in.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
             {environments.map((item, index) => (
                <FormField
                 key={item.id}
@@ -393,10 +398,17 @@ const Step4 = ({ control, state }: { control: Control<OnboardingFormData>, state
                 )}
               />
             ))}
-          </CardContent>
-        </Card>
-        <AssetPreviewPane state={state} isFinalStep={true} />
-    </div>
+        </div>
+        <Separator className="my-8" />
+        <div>
+            <h3 className="text-xl font-headline mb-4 text-center">Generated Asset</h3>
+            <AssetPreview state={state} isFinalStep={true} />
+        </div>
+      </CardContent>
+       <CardFooter>
+            <SubmitButton isSuccess={state.status === 'success'} />
+        </CardFooter>
+    </Card>
   );
 };
 
@@ -490,4 +502,5 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   );
 }
 
+    
     
