@@ -2,7 +2,10 @@
 "use server";
 
 import { z } from "zod";
-import { generateAssets } from "@/ai/flows/generate-assets";
+import { generateAssetsAppearance } from "@/ai/flows/generate-assets-appearance";
+import { generateAssetsFood } from "@/ai/flows/generate-assets-food";
+import { generateAssetsActivities } from "@/ai/flows/generate-assets-activities";
+import { generateAssetsEnvironments } from "@/ai/flows/generate-assets-environments";
 import { isFirebaseEnabled, storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL, getBlob } from "firebase/storage";
 
