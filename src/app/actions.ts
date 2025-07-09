@@ -1,3 +1,4 @@
+
 "use server";
 
 import { z } from "zod";
@@ -26,7 +27,10 @@ const EnvironmentItemSchema = z.object({
 const OnboardingSchema = z.object({
   firstName: z.string().min(1, "First name is required.").max(11, "First name must be 11 characters or less."),
   gender: z.enum(["male", "female"], { required_error: "Please select a gender." }),
-  age: z.coerce.number().min(1, "Age must be at least 1.").max(120, "Age must be 120 or less."),
+  age: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    z.coerce.number().min(1, "Age must be at least 1.").max(120, "Age must be 120 or less.")
+  ),
   photo: z
     .instanceof(File)
     .refine((file) => file.size > 0, "A photo is required.")
