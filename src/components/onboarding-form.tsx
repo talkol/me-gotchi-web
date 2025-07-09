@@ -482,9 +482,13 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
   const handleNext = async () => {
     setCurrentStep((prev) => prev + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handlePrevious = () => setCurrentStep((prev) => prev - 1);
+  const handlePrevious = () => {
+    setCurrentStep((prev) => prev - 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   
   const onSubmit = async () => {
     // The validation is now handled by the zodResolver with the superRefine logic.
