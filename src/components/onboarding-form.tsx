@@ -27,12 +27,12 @@ type OnboardingFormProps = {
 
 // Client-side Zod schema
 const FoodItemSchema = z.object({
-  name: z.string().min(1, "This field is required.").max(11, "Max 11 chars"),
+  name: z.string().max(11, "Max 11 chars"),
   addExplanation: z.boolean(),
   explanation: z.string(),
 });
 const ActivityItemSchema = z.object({
-  name: z.string().min(1, "This field is required.").max(11, "Max 11 chars"),
+  name: z.string().max(11, "Max 11 chars"),
   addExplanation: z.boolean(),
   explanation: z.string(),
 });
@@ -40,26 +40,65 @@ const EnvironmentItemSchema = z.object({
   explanation: z.string(),
 });
 
-// Full schema for client-side validation context
+// Full schema for client-side validation context with step-aware logic
 const OnboardingFormSchema = z.object({
-  firstName: z.string().min(1, "First name is required.").max(11, "Max 11 characters."),
-  gender: z.enum(["male", "female"], { required_error: "Please select a gender." }),
-  age: z.coerce.number({invalid_type_error: "Age is required"}).min(1, "Must be at least 1.").max(120, "Must be 120 or less."),
-  photo: z.any().refine((file) => file instanceof File && file.size > 0, "A photo is required.")
-    .refine((file) => file instanceof File && file.size < 4 * 1024 * 1024, "Photo must be less than 4MB.")
-    .refine((file) => file instanceof File && ["image/jpeg", "image/png", "image/webp"].includes(file.type), "Only .jpg, .png, and .webp formats are supported."),
+  firstName: z.string().max(11, "Max 11 characters.").optional(),
+  gender: z.enum(["male", "female"]).optional(),
+  age: z.coerce.number().min(1, "Must be at least 1.").max(120, "Must be 120 or less.").optional(),
+  photo: z.any().optional(),
+  
   likedFoods: z.array(FoodItemSchema).length(3),
   dislikedFoods: z.array(FoodItemSchema).length(3),
   likedDrinks: z.array(FoodItemSchema).length(2),
   dislikedDrinks: z.array(FoodItemSchema).length(1),
+
   likedFunActivities: z.array(ActivityItemSchema).length(3),
   dislikedFunActivities: z.array(ActivityItemSchema).length(2),
   likedExerciseActivities: z.array(ActivityItemSchema).length(2),
   dislikedExerciseActivities: z.array(ActivityItemSchema).length(1),
+  
   environments: z.array(EnvironmentItemSchema).length(4),
+  
   inviteCode: z.string().min(1),
   step: z.coerce.number().min(1).max(4),
-  imageUrl: z.string().optional(), // Stores the base image URL from step 1
+  imageUrl: z.string().optional(),
+}).superRefine((data, ctx) => {
+    const step = data.step;
+
+    if (step >= 1) {
+        if (!data.firstName || data.firstName.trim().length === 0) {
+            ctx.addIssue({ path: ['firstName'], message: 'First name is required.', code: 'custom'});
+        }
+        if (data.firstName && data.firstName.length > 11) {
+            ctx.addIssue({ path: ['firstName'], message: 'Max 11 characters.', code: 'custom'});
+        }
+        if (!data.gender) {
+            ctx.addIssue({ path: ['gender'], message: 'Please select a gender.', code: 'custom'});
+        }
+        if (data.age === undefined || data.age === null) {
+            ctx.addIssue({ path: ['age'], message: 'Age is required.', code: 'custom'});
+        }
+        if (!(data.photo instanceof File) || data.photo.size === 0) {
+            ctx.addIssue({ path: ['photo'], message: 'A photo is required.', code: 'custom'});
+        } else {
+             if (data.photo.size > 4 * 1024 * 1024) ctx.addIssue({ path: ['photo'], message: 'Photo must be less than 4MB.', code: 'custom'});
+             if (!["image/jpeg", "image/png", "image/webp"].includes(data.photo.type)) ctx.addIssue({ path: ['photo'], message: 'Only .jpg, .png, and .webp formats are supported.', code: 'custom'});
+        }
+    }
+
+    if (step >= 2) {
+        data.likedFoods.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`likedFoods.${idx}.name`], message: 'This field is required.', code: 'custom'})});
+        data.dislikedFoods.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`dislikedFoods.${idx}.name`], message: 'This field is required.', code: 'custom'})});
+        data.likedDrinks.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`likedDrinks.${idx}.name`], message: 'This field is required.', code: 'custom'})});
+        data.dislikedDrinks.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`dislikedDrinks.${idx}.name`], message: 'This field is required.', code: 'custom'})});
+    }
+
+    if (step >= 3) {
+        data.likedFunActivities.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`likedFunActivities.${idx}.name`], message: 'This field is required.', code: 'custom'})});
+        data.dislikedFunActivities.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`dislikedFunActivities.${idx}.name`], message: 'This field is required.', code: 'custom'})});
+        data.likedExerciseActivities.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`likedExerciseActivities.${idx}.name`], message: 'This field is required.', code: 'custom'})});
+        data.dislikedExerciseActivities.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`dislikedExerciseActivities.${idx}.name`], message: 'This field is required.', code: 'custom'})});
+    }
 });
 type OnboardingFormData = z.infer<typeof OnboardingFormSchema>;
 
@@ -227,7 +266,7 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
             <FormField control={control} name="firstName" render={({ field }) => (
                 <FormItem>
                     <FormLabel className="text-base font-semibold">First Name</FormLabel>
-                    <FormControl><Input placeholder="Your first name" {...field} className="text-base"/></FormControl>
+                    <FormControl><Input placeholder="Your first name" {...field} value={field.value ?? ''} className="text-base"/></FormControl>
                     <FormMessage />
                 </FormItem>
             )} />
@@ -406,7 +445,11 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     },
   });
 
-  const { control, handleSubmit, trigger, watch, setError, setValue } = form;
+  const { control, handleSubmit, watch, setError, setValue } = form;
+
+  useEffect(() => {
+    setValue('step', currentStep, { shouldValidate: true });
+  }, [currentStep, setValue]);
 
   useEffect(() => {
     if (state.status === "error") {
@@ -444,17 +487,14 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const handlePrevious = () => setCurrentStep((prev) => prev - 1);
   
   const onSubmit = async () => {
-    const fieldsToValidate = STEPS[currentStep - 1].fields as (keyof OnboardingFormData)[];
-    const isValid = await trigger(fieldsToValidate);
-    if (!isValid) {
-        toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fix the errors before generating.' });
-        return;
-    }
-    setValue('step', currentStep);
+    // The validation is now handled by the zodResolver with the superRefine logic.
+    // If validation fails, react-hook-form will prevent this function from being called.
     lastActionStep.current = currentStep;
     
     setIsGenerating(true);
     const formData = new FormData(formRef.current!);
+    // We need to ensure the current step is on the FormData
+    formData.set('step', String(currentStep));
     const result = await generateMeGotchiAsset(formData);
     setState(result);
   }
