@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useMemo, useActionState, useRef, useTransition } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useForm, useFieldArray, Control, UseFormWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -380,8 +380,8 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const lastActionStep = useRef<number | null>(null);
 
   const initialState: FormState = { status: "idle", message: "" };
-  const [state, formAction] = useActionState(generateMeGotchiAsset, initialState);
-  const [isGenerating, startTransition] = useTransition();
+  const [state, setState] = useState<FormState>(initialState);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const form = useForm<OnboardingFormData>({
     resolver: zodResolver(OnboardingFormSchema),
@@ -410,6 +410,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
   useEffect(() => {
     if (state.status === "error") {
+      setIsGenerating(false);
       toast({
         variant: "destructive",
         title: "Oh no! Something went wrong.",
@@ -418,21 +419,19 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       if (state.validationErrors) {
         Object.entries(state.validationErrors).forEach(([field, error]: [any, any]) => {
            if (error && error._errors && error._errors.length > 0) {
-              setError(field, { type: 'server', message: error._errors[0] });
+              setError(field as any, { type: 'server', message: error._errors[0] });
            }
         });
       }
     }
     if (state.status === "success" && state.imageUrl) {
-       // For step 1, we also save the returned URL to a hidden form field.
-       // This will be the base image for all subsequent steps.
+       setIsGenerating(false);
        if (lastActionStep.current === 1) {
          setValue("imageUrl", state.imageUrl);
        }
-       // Store the generated asset for the current step for display.
        setStepImageUrls(prev => ({...prev, [lastActionStep.current!]: state.imageUrl}));
 
-       if (lastActionStep.current === 4) { // Final step toast
+       if (lastActionStep.current === 4) {
          toast({ title: "Success!", description: state.message });
        }
     }
@@ -453,9 +452,11 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     }
     setValue('step', currentStep);
     lastActionStep.current = currentStep;
-    startTransition(() => {
-      formAction(new FormData(formRef.current!));
-    });
+    
+    setIsGenerating(true);
+    const formData = new FormData(formRef.current!);
+    const result = await generateMeGotchiAsset(formData);
+    setState(result);
   }
   
   const hasBeenGenerated = !!stepImageUrls[currentStep];

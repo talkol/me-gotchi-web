@@ -142,7 +142,6 @@ function formatPreferencesForAI(data: Partial<z.infer<typeof OnboardingSchema>>)
 }
 
 export async function generateMeGotchiAsset(
-  prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
   
