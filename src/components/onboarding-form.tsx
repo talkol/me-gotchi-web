@@ -242,7 +242,7 @@ const StepCard = ({ title, children, imageUrl, state, isGenerating, hasBeenGener
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     <div className="flex flex-col justify-start h-full space-y-4">
                         <GenerateButton isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated}/>
-                        <p className="text-xs text-muted-foreground text-center">
+                        <p className="text-xs text-muted-foreground text-left">
                             {isFinalStep
                                 ? "Press 'Generate' to create your final Me-Gotchi assets. The assets will be stored and become available in the game."
                                 : "Press 'Generate' to preview your Me-Gotchi. You can generate again if you're not happy with the result. The next step will unlock upon successful generation."
@@ -505,10 +505,6 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
          setValue("imageUrl", state.imageUrl);
        }
        setStepImageUrls(prev => ({...prev, [lastActionStep.current!]: state.imageUrl}));
-
-       if (lastActionStep.current === 4) {
-         toast({ title: "Success!", description: state.message });
-       }
     }
   }, [state, toast, setError, setValue]);
 
