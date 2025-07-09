@@ -168,7 +168,33 @@ export async function generateMeGotchiAsset(
   if (!photo || !(photo instanceof File) || photo.size === 0) {
       return { status: 'error', message: 'A photo is required for generation.' };
   }
+  if (!inviteCode) {
+    return { status: "error", message: "Invite code is missing." };
+  }
   
+  // Step 1: Upload the user's photo to Firebase Storage.
+  if (step === 1) {
+    try {
+      const storagePath = `${inviteCode}/face-atlas.png`;
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, photo, { contentType: photo.type });
+      const finalUrl = await getDownloadURL(storageRef);
+      return {
+        status: "success",
+        message: "Photo uploaded successfully!",
+        imageUrl: finalUrl,
+      };
+    } catch (error) {
+      console.error("Error uploading photo for step 1:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "An unknown error occurred.";
+      return {
+        status: "error",
+        message: `Failed to upload photo. ${errorMessage}`,
+      };
+    }
+  }
+
   const preferences = formatPreferencesForAI(validationResult.data);
 
   try {
