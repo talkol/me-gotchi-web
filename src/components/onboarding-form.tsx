@@ -1,8 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useMemo, useActionState, useRef } from "react";
-import { useFormStatus } from "react-dom";
+import React, { useEffect, useState, useMemo, useActionState, useRef, useTransition } from "react";
 import { useForm, useFieldArray, Control, UseFormWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -233,7 +232,7 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
               <FormField control={control} name="age" render={({ field }) => (
                 <FormItem>
                     <FormLabel className="text-base font-semibold">Age</FormLabel>
-                    <FormControl><Input type="number" placeholder="e.g., 25" {...field} value={field.value || ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} className="text-base"/></FormControl>
+                    <FormControl><Input type="number" placeholder="e.g., 25" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} className="text-base"/></FormControl>
                     <FormMessage />
                 </FormItem>
             )} />
@@ -364,7 +363,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
   const initialState: FormState = { status: "idle", message: "" };
   const [state, formAction] = useActionState(generateMeGotchiAsset, initialState);
-  const { pending: isGenerating } = useFormStatus();
+  const [isGenerating, startTransition] = useTransition();
 
   const form = useForm<OnboardingFormData>({
     resolver: zodResolver(OnboardingFormSchema),
@@ -426,7 +425,9 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         return;
     }
     setValue('step', currentStep);
-    formAction(new FormData(formRef.current!))
+    startTransition(() => {
+      formAction(new FormData(formRef.current!));
+    });
   }
 
   return (
