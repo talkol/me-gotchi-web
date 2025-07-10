@@ -131,42 +131,47 @@ export async function generateMeGotchiAsset(
     };
   }
   
-  const { inviteCode, step, photo, imageUrl: baseImageUrl } = validationResult.data;
+  const { inviteCode, step, photo } = validationResult.data;
+  let { imageUrl: baseImageUrl } = validationResult.data;
+
   if (!inviteCode || !step) {
       return { status: "error", message: "Invite code or step is missing."}
   }
 
   try {
-    if (step === 1) {
-      if (!photo || !(photo instanceof File)) {
-        throw new Error("A photo must be provided in step 1.");
-      }
-      
+    // Handle initial photo upload in step 1 to get the baseImageUrl
+    if (step === 1 && photo) {
       const { assetUrl } = await generateAppearanceAsset(photo, inviteCode);
-      
-      return { status: "success", message: "Step 1 complete!", imageUrl: assetUrl };
+      baseImageUrl = assetUrl;
+      return { status: "success", message: "Step 1 complete!", imageUrl: baseImageUrl };
     }
-
+    
+    // For all subsequent steps, a base image URL must exist
     if (!baseImageUrl) {
       return { status: "error", message: "Base image from Step 1 is missing. Please complete Step 1 first." };
     }
 
-    if (step === 2) {
-      const result = await generateFoodAsset(baseImageUrl, inviteCode);
-      return { status: "success", message: "Step 2 preview generated.", imageUrl: result.assetUrl };
-    }
+    let result: { assetUrl: string };
+    let successMessage: string;
 
-    if (step === 3) {
-      const result = await generateActivitiesAsset(baseImageUrl, inviteCode);
-      return { status: "success", message: "Step 3 preview generated.", imageUrl: result.assetUrl };
+    switch (step) {
+      case 2:
+        result = await generateFoodAsset(baseImageUrl, inviteCode);
+        successMessage = "Step 2 preview generated.";
+        break;
+      case 3:
+        result = await generateActivitiesAsset(baseImageUrl, inviteCode);
+        successMessage = "Step 3 preview generated.";
+        break;
+      case 4:
+        result = await generateEnvironmentsAsset(baseImageUrl, inviteCode);
+        successMessage = "Step 4 preview generated.";
+        break;
+      default:
+        return { status: 'error', message: 'Invalid step provided for generation.' };
     }
     
-    if (step === 4) {
-      const result = await generateEnvironmentsAsset(baseImageUrl, inviteCode);
-      return { status: "success", message: "Step 4 preview generated.", imageUrl: result.assetUrl };
-    }
-
-    return { status: 'error', message: 'Invalid step provided.' };
+    return { status: "success", message: successMessage, imageUrl: result.assetUrl };
 
   } catch (error) {
     console.error(`Error in generateMeGotchiAsset (Step ${step}):`, error);
