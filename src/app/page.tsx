@@ -20,32 +20,8 @@ export default function Home() {
             </p>
         </div>
 
-        <div className="z-10 mt-8 w-full max-w-md">
+        <div className="z-10 mt-10 w-full max-w-md">
           <InviteForm />
-        </div>
-        
-        <div className="z-10 mt-16 grid grid-cols-1 gap-8 text-center md:grid-cols-3 md:max-w-5xl">
-            <div className="flex flex-col items-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 border border-primary/30">
-                    <Heart className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="font-headline text-xl font-semibold text-foreground">Personalized</h3>
-                <p className="mt-2 text-muted-foreground">Your Me-Gotchi is a unique reflection of you, based on your photo and preferences.</p>
-            </div>
-            <div className="flex flex-col items-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 border border-primary/30">
-                    <Sparkles className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="font-headline text-xl font-semibold text-foreground">AI-Powered</h3>
-                <p className="mt-2 text-muted-foreground">Leveraging cutting-edge AI to generate one-of-a-kind digital assets for your companion.</p>
-            </div>
-            <div className="flex flex-col items-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 border border-primary/30">
-                    <Bot className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="font-headline text-xl font-semibold text-foreground">Game Ready</h3>
-                <p className="mt-2 text-muted-foreground">Your generated asset integrates seamlessly with the Me-Gotchi Android game.</p>
-            </div>
         </div>
       </main>
     </div>

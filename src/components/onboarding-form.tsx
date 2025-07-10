@@ -551,7 +551,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
             <input type="hidden" {...form.register("imageUrl")} />
 
             <div className={currentStep === 1 ? 'block' : 'hidden'}>
-                <StepCard title="Step 1: Your Likeness" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} imageUrl={stepImageUrls[1] ?? watch('imageUrl')}>
+                <StepCard title="Step 1: Appearance" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} imageUrl={stepImageUrls[1] ?? watch('imageUrl')}>
                     <Step1 control={control} watch={watch} />
                 </StepCard>
             </div>

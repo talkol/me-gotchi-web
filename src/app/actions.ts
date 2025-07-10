@@ -1,7 +1,7 @@
 
 "use server";
 
-import { z } from "zod";
+import { z } from "zod";import { generateAppearanceAsset } from "@/ai/services";
 import { generateFoodAsset, generateActivitiesAsset, generateEnvironmentsAsset } from "@/ai/services";
 import { isFirebaseEnabled, storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
