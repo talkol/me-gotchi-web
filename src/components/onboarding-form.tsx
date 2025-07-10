@@ -269,7 +269,8 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
     }, [photoFile]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-8
+    ">
         <div className="space-y-6">
             <FormField control={control} name="firstName" render={({ field }) => (
                 <FormItem>
