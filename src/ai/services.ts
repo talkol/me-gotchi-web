@@ -1,8 +1,8 @@
 'use server';
- 
+
+import type { OnboardingData } from '@/app/actions';
 import { isFirebaseEnabled, storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL, getBlob } from 'firebase/storage';
-import OpenAI from 'openai';
+import { getBlob, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 // --- Asset Generation Functions (Test Logic) ---
 
@@ -12,10 +12,10 @@ async function copyAsset(
   newFileName: string
 ): Promise<string> {
   if (!baseImageUrl) {
-    throw new Error("Base image URL is required for this operation.");
+    throw new Error('Base image URL is required for this operation.');
   }
-   if (!inviteCode) {
-    throw new Error("Invite code is required.");
+  if (!inviteCode) {
+    throw new Error('Invite code is required.');
   }
 
   if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
@@ -30,77 +30,78 @@ async function copyAsset(
 }
 
 export async function generateAppearanceAsset(
-  photo: File | undefined,
-  inviteCode: string | undefined,
+  data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!photo) {
-    throw new Error("A photo is required to generate the appearance asset.");
+  if (!data.photo) {
+    throw new Error('A photo is required to generate the appearance asset.');
   }
-  if (!inviteCode) {
-    throw new Error("Invite code is required.");
+  if (!data.inviteCode) {
+    throw new Error('Invite code is required.');
   }
-  
+
   let finalUrl: string;
   if (isFirebaseEnabled && storage) {
-    const storagePath = `${inviteCode}/face-atlas.png`;
+    const storagePath = `${data.inviteCode}/face-atlas.png`;
     const storageRef = ref(storage, storagePath);
-    await uploadBytes(storageRef, photo, { contentType: photo.type });
+    await uploadBytes(storageRef, data.photo, { contentType: data.photo.type });
     finalUrl = await getDownloadURL(storageRef);
   } else {
-    finalUrl = `data:${photo.type};base64,${Buffer.from(await photo.arrayBuffer()).toString("base64")}`;
+    finalUrl = `data:${
+      data.photo.type
+    };base64,${Buffer.from(await data.photo.arrayBuffer()).toString(
+      'base64'
+    )}`;
   }
   return { assetUrl: finalUrl };
 }
+
 export async function generateFoodAsset(
-  baseImageUrl: string | undefined,
-  inviteCode: string | undefined,
+  data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  const assetUrl = await copyAsset(baseImageUrl!, inviteCode!, 'food-atlas.png');
+  if (!data.imageUrl) {
+    throw new Error('A base image URL is required.');
+  }
+  if (!data.inviteCode) {
+    throw new Error('Invite code is required.');
+  }
+  const assetUrl = await copyAsset(
+    data.imageUrl,
+    data.inviteCode,
+    'food-atlas.png'
+  );
   return { assetUrl };
 }
 
 export async function generateActivitiesAsset(
-  baseImageUrl: string | undefined,
-  inviteCode: string | undefined,
-): Promise<{ assetUrl:string }> {
-  const assetUrl = await copyAsset(baseImageUrl!, inviteCode!, 'activities-atlas.png');
+  data: OnboardingData
+): Promise<{ assetUrl: string }> {
+  if (!data.imageUrl) {
+    throw new Error('A base image URL is required.');
+  }
+  if (!data.inviteCode) {
+    throw new Error('Invite code is required.');
+  }
+  const assetUrl = await copyAsset(
+    data.imageUrl,
+    data.inviteCode,
+    'activities-atlas.png'
+  );
   return { assetUrl };
 }
 
 export async function generateEnvironmentsAsset(
-  baseImageUrl: string | undefined,
-  inviteCode: string | undefined,
-): Promise<{ assetUrl:string }> {
-   const assetUrl = await copyAsset(baseImageUrl!, inviteCode!, 'environments-atlas.png');
-   return { assetUrl };
-}
-
-// --- OpenAI Specific Functions ---
-
-export async function validateOpenAiApiKey(
-  apiKey: string
-): Promise<{ isValid: boolean; errorMessage?: string }> {
-  if (!apiKey) {
-    return { isValid: false, errorMessage: 'API key cannot be empty.' };
+  data: OnboardingData
+): Promise<{ assetUrl: string }> {
+  if (!data.imageUrl) {
+    throw new Error('A base image URL is required.');
   }
-
-  try {
-    const openai = new OpenAI({ apiKey });
-    await openai.models.list();
-    return { isValid: true };
-  } catch (error: any) {
-    console.error('Error validating OpenAI API key:', error);
-    let message = 'An error occurred while validating the API key.';
-    if (error instanceof OpenAI.APIError) {
-      if (error.status === 401) {
-        message = 'The provided OpenAI API key is invalid or has been revoked.';
-      } else {
-        message = `An API error occurred: ${error.message}`;
-      }
-    }
-    return {
-      isValid: false,
-      errorMessage: message,
-    };
+  if (!data.inviteCode) {
+    throw new Error('Invite code is required.');
   }
+  const assetUrl = await copyAsset(
+    data.imageUrl,
+    data.inviteCode,
+    'environments-atlas.png'
+  );
+  return { assetUrl };
 }
