@@ -131,12 +131,7 @@ export async function generateMeGotchiAsset(
     };
   }
   
-  const { inviteCode, step, photo } = validationResult.data;
-  let { imageUrl: baseImageUrl } = validationResult.data;
-
-  if (!inviteCode || !step) {
-      return { status: "error", message: "Invite code or step is missing."}
-  }
+  const { inviteCode, step, photo, imageUrl } = validationResult.data;
 
   try {
     let result: { assetUrl: string };
@@ -144,31 +139,19 @@ export async function generateMeGotchiAsset(
 
     switch (step) {
       case 1:
-        if (!photo) {
-           return { status: 'error', message: 'Photo is required for step 1.' };
-        }
         result = await generateAppearanceAsset(photo, inviteCode);
         successMessage = "Step 1 complete!";
         break;
       case 2:
-        if (!baseImageUrl) {
-            return { status: "error", message: "Base image from Step 1 is missing." };
-        }
-        result = await generateFoodAsset(baseImageUrl, inviteCode);
+        result = await generateFoodAsset(imageUrl, inviteCode);
         successMessage = "Step 2 preview generated.";
         break;
       case 3:
-         if (!baseImageUrl) {
-            return { status: "error", message: "Base image from Step 1 is missing." };
-        }
-        result = await generateActivitiesAsset(baseImageUrl, inviteCode);
+        result = await generateActivitiesAsset(imageUrl, inviteCode);
         successMessage = "Step 3 preview generated.";
         break;
       case 4:
-        if (!baseImageUrl) {
-            return { status: "error", message: "Base image from Step 1 is missing." };
-        }
-        result = await generateEnvironmentsAsset(baseImageUrl, inviteCode);
+        result = await generateEnvironmentsAsset(imageUrl, inviteCode);
         successMessage = "Step 4 preview generated.";
         break;
       default:

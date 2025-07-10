@@ -11,6 +11,13 @@ async function copyAsset(
   inviteCode: string,
   newFileName: string
 ): Promise<string> {
+  if (!baseImageUrl) {
+    throw new Error("Base image URL is required for this operation.");
+  }
+   if (!inviteCode) {
+    throw new Error("Invite code is required.");
+  }
+
   if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
     const baseImageRef = ref(storage, baseImageUrl);
     const blob = await getBlob(baseImageRef);
@@ -23,9 +30,16 @@ async function copyAsset(
 }
 
 export async function generateAppearanceAsset(
-  photo: File,
-  inviteCode: string
+  photo: File | undefined,
+  inviteCode: string | undefined,
 ): Promise<{ assetUrl: string }> {
+  if (!photo) {
+    throw new Error("A photo is required to generate the appearance asset.");
+  }
+  if (!inviteCode) {
+    throw new Error("Invite code is required.");
+  }
+  
   let finalUrl: string;
   if (isFirebaseEnabled && storage) {
     const storagePath = `${inviteCode}/face-atlas.png`;
@@ -38,26 +52,26 @@ export async function generateAppearanceAsset(
   return { assetUrl: finalUrl };
 }
 export async function generateFoodAsset(
-  baseImageUrl: string,
-  inviteCode: string
+  baseImageUrl: string | undefined,
+  inviteCode: string | undefined,
 ): Promise<{ assetUrl: string }> {
-  const assetUrl = await copyAsset(baseImageUrl, inviteCode, 'food-atlas.png');
+  const assetUrl = await copyAsset(baseImageUrl!, inviteCode!, 'food-atlas.png');
   return { assetUrl };
 }
 
 export async function generateActivitiesAsset(
-  baseImageUrl: string,
-  inviteCode: string
+  baseImageUrl: string | undefined,
+  inviteCode: string | undefined,
 ): Promise<{ assetUrl:string }> {
-  const assetUrl = await copyAsset(baseImageUrl, inviteCode, 'activities-atlas.png');
+  const assetUrl = await copyAsset(baseImageUrl!, inviteCode!, 'activities-atlas.png');
   return { assetUrl };
 }
 
 export async function generateEnvironmentsAsset(
-  baseImageUrl: string,
-  inviteCode: string
+  baseImageUrl: string | undefined,
+  inviteCode: string | undefined,
 ): Promise<{ assetUrl:string }> {
-   const assetUrl = await copyAsset(baseImageUrl, inviteCode, 'environments-atlas.png');
+   const assetUrl = await copyAsset(baseImageUrl!, inviteCode!, 'environments-atlas.png');
    return { assetUrl };
 }
 
