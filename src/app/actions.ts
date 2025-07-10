@@ -1,7 +1,8 @@
 
 "use server";
 
-import { z } from "zod";import { generateAppearanceAsset } from "@/ai/services";
+import { z } from "zod";
+import { generateAppearanceAsset } from "@/ai/services";
 import { generateFoodAsset, generateActivitiesAsset, generateEnvironmentsAsset } from "@/ai/services";
 import { isFirebaseEnabled, storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -141,18 +142,9 @@ export async function generateMeGotchiAsset(
         throw new Error("A photo must be provided in step 1.");
       }
       
-      let finalUrl: string;
-      if (isFirebaseEnabled && storage) {
-        const storagePath = `${inviteCode}/face-atlas.png`;
-        const storageRef = ref(storage, storagePath);
-        await uploadBytes(storageRef, photo, { contentType: photo.type });
-        finalUrl = await getDownloadURL(storageRef);
-      } else {
-        const photoDataUri = `data:${photo.type};base64,${Buffer.from(await photo.arrayBuffer()).toString("base64")}`;
-        finalUrl = photoDataUri;
-      }
+      const { assetUrl } = await generateAppearanceAsset(photo, inviteCode);
       
-      return { status: "success", message: "Step 1 complete!", imageUrl: finalUrl };
+      return { status: "success", message: "Step 1 complete!", imageUrl: assetUrl };
     }
 
     if (!baseImageUrl) {
