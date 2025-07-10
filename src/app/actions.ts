@@ -163,7 +163,7 @@ export async function generateMeGotchiAsset(
     
     if (step === 4) {
       const result = await generateEnvironmentsAsset(baseImageUrl, inviteCode);
-      return { status: "success", message: "Step 4 assets generated.", imageUrl: result.assetUrl };
+      return { status: "success", message: "Step 4 preview generated.", imageUrl: result.assetUrl };
     }
 
     return { status: 'error', message: 'Invalid step provided.' };

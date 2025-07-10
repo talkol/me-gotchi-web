@@ -57,25 +57,8 @@ export async function generateEnvironmentsAsset(
   baseImageUrl: string,
   inviteCode: string
 ): Promise<{ assetUrl:string }> {
-   if (isFirebaseEnabled && storage && baseImageUrl.startsWith('https')) {
-        const baseImageRef = ref(storage, baseImageUrl);
-        const blob = await getBlob(baseImageRef);
-        
-        let firstUrl: string | null = null;
-        for (let i = 1; i <= 4; i++) {
-            const newPath = `${inviteCode}/background${i}.png`;
-            const newRef = ref(storage, newPath);
-            await uploadBytes(newRef, blob, { contentType: 'image/png' });
-            if (i === 1) {
-                firstUrl = await getDownloadURL(newRef);
-            }
-        }
-        if (!firstUrl) {
-          throw new Error("Could not get URL for the first background image.");
-        }
-        return { assetUrl: firstUrl };
-    }
-    return { assetUrl: baseImageUrl }; // Fallback for local mode
+   const assetUrl = await copyAsset(baseImageUrl, inviteCode, 'environments-atlas.png');
+   return { assetUrl };
 }
 
 // --- OpenAI Specific Functions ---
