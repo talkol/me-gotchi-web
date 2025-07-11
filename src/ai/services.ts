@@ -77,7 +77,7 @@ export async function generateAppearanceCharacterAsset(
   const photoDataUri = await fileToDataURI(data.photo);
   
   const response = await openai.responses.create({
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4o',
     input: [
         {
             role: 'user',
@@ -95,19 +95,19 @@ export async function generateAppearanceCharacterAsset(
     ],
     tools: [{
         type: 'image_generation',
-        moderation: 'low',
-        quality: 'high',
-        size: '1024x1024',
+        size: '1024x1024'
     }]
   });
 
-  const generatedImageB64 = response.output
+  const imageData = response.output
     .filter((output): output is OpenAI.ImageGenerationCall => output.type === 'image_generation_call')
-    .map(output => output.result)[0];
+    .map((output) => output.result);
 
-  if (!generatedImageB64) {
+  if (imageData.length === 0 || !imageData[0]) {
       throw new Error('Failed to generate image or received no image data from OpenAI.');
   }
+  
+  const generatedImageB64 = imageData[0];
   
   if (!isFirebaseEnabled || !storage) {
     console.warn("Firebase not configured. Returning base64 data URI directly.");
@@ -142,7 +142,7 @@ export async function generateAppearanceExpressionsAsset(
   const prompt = "Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put this face of the boy with a different varied facial expression. Top row: big happy smile mouth closed with eyes open; huge happy smile mouth closed with eyes open; huge laugh mouth open and eyes closed. Middle row: no smile with eyes looking top left; no smile with eyes looking straight; no smile with eyes looking bottom right. Bottom row: big sad frown with eyes open; huge angry frown with eyes open; huge frown crying with eyes closed and tears.";
 
   const response = await openai.responses.create({
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4o',
     input: [
       {
         role: 'user',
@@ -157,19 +157,20 @@ export async function generateAppearanceExpressionsAsset(
         type: 'image_generation',
         size: '1024x1024',
         quality: 'high',
-        moderation: 'low',
         background: 'transparent',
       },
     ],
   });
 
-  const generatedImageB64 = response.output
+  const imageData = response.output
     .filter((output): output is OpenAI.ImageGenerationCall => output.type === 'image_generation_call')
-    .map(output => output.result)[0];
-
-  if (!generatedImageB64) {
+    .map((output) => output.result);
+  
+  if (imageData.length === 0 || !imageData[0]) {
     throw new Error('Failed to generate expressions image or received no image data from OpenAI.');
   }
+
+  const generatedImageB64 = imageData[0];
   
   // 3. Upload the generated expressions image to Firebase Storage
   const storagePath = `${data.inviteCode}/expressions.png`;
