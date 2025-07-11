@@ -70,12 +70,15 @@ export async function generateAppearanceCharacterAsset(
   const photoDataUri = await fileToDataURI(data.photo);
   
   const response = await openai.responses.create({
-    model: 'gpt-4o',
+    model: 'gpt-4.1',
     input: [
         {
             role: 'user',
             content: [
-                { type: 'input_text', text: 'Create a game character based on the likeness of this boy. Focus on the face and make an illustration. White background please.' },
+                { 
+                  type: 'input_text', 
+                  text: 'Create a video game character illustration based on the likeness of this photo. Focus on facial features. White background please.',
+                },
                 {
                     type: 'input_image',
                     image_url: photoDataUri,
@@ -85,7 +88,10 @@ export async function generateAppearanceCharacterAsset(
     ],
     tools: [{
         type: 'image_generation',
-        size: '1024x1536'
+        moderation: 'low',
+        quality: 'high',
+        size: '1024x1536',
+
     }]
   });
 
