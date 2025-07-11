@@ -147,20 +147,6 @@ const STEPS: StepConfig[] = [
   { id: 5, title: "All Set!", fields: [], generations: [] },
 ];
 
-const GenerateButton = ({ isGenerating, hasBeenGenerated, title }: { isGenerating: boolean; hasBeenGenerated: boolean, title: string }) => {
-  return (
-    <Button type="submit" size="lg" className="w-full font-bold" disabled={isGenerating}>
-      {isGenerating ? (
-        <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
-      ) : hasBeenGenerated ? (
-        <><CheckCircle className="mr-2 h-4 w-4" /> Regenerate</>
-      ) : (
-        <><Wand2 className="mr-2 h-4 w-4" /> {title}</>
-      )}
-    </Button>
-  );
-};
-
 const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: string; isGenerating: boolean, status: FormState['status'], message: string }) => {
     const showLoading = isGenerating && !imageUrl;
     const showPreviousImageWhileLoading = isGenerating && imageUrl;
@@ -214,17 +200,21 @@ const GenerationUnit = ({
     onGenerate: (generationType: string) => void;
 }) => (
     <div className="flex flex-col justify-start h-full space-y-4">
-        <form onSubmit={(e) => { e.preventDefault(); if (!isLocked) onGenerate(generationType); }}>
-            <Button type="submit" size="lg" className="w-full font-bold" disabled={isGenerating || isLocked}>
-                {isGenerating ? (
-                    <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
-                ) : hasBeenGenerated ? (
-                    <><CheckCircle className="mr-2 h-4 w-4" /> Regenerate</>
-                ) : (
-                    <><Wand2 className="mr-2 h-4 w-4" /> {title}</>
-                )}
-            </Button>
-        </form>
+        <Button
+            type="button"
+            size="lg"
+            className="w-full font-bold"
+            disabled={isGenerating || isLocked}
+            onClick={() => { if (!isLocked) onGenerate(generationType); }}
+        >
+            {isGenerating ? (
+                <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
+            ) : hasBeenGenerated ? (
+                <><CheckCircle className="mr-2 h-4 w-4" /> Regenerate</>
+            ) : (
+                <><Wand2 className="mr-2 h-4 w-4" /> {title}</>
+            )}
+        </Button>
         <AssetPreview imageUrl={imageUrl} isGenerating={isGenerating} status={state.status} message={state.message} />
     </div>
 );
@@ -586,7 +576,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     }
   }, [lastResult, toast, setError, setValue, currentStep]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < 5) {
       setCurrentStep((prev) => prev + 1);
     }
