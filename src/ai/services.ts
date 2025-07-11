@@ -1,9 +1,14 @@
 
 'use server';
 
-import type { OnboardingData } from '@/app/actions';
+import type { OnboardingData, StepImageUrls } from '@/app/actions';
 import { isFirebaseEnabled, storage } from '@/lib/firebase';
-import { getBlob, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getBlob, getDownloadURL, ref, uploadBytes, uploadString } from 'firebase/storage';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 async function copyAsset(
   baseImageUrl: string,
@@ -28,6 +33,28 @@ async function copyAsset(
   return baseImageUrl; // Fallback for local mode
 }
 
+// Helper to convert a File to a Data URI
+function fileToDataURI(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to read file as Data URI.'));
+      }
+    };
+    reader.onerror = (error) => reject(error);
+    // This will cause an error in server components, so we need a workaround
+    // We will convert it to an ArrayBuffer and then to a Buffer and then to a data URI
+    file.arrayBuffer().then(buffer => {
+        const base64 = Buffer.from(buffer).toString('base64');
+        const dataURI = `data:${file.type};base64,${base64}`;
+        resolve(dataURI);
+    }).catch(reject);
+  });
+}
+
 // Step 1: Appearance
 export async function generateAppearanceCharacterAsset(
   data: OnboardingData
@@ -38,20 +65,77 @@ export async function generateAppearanceCharacterAsset(
   if (!data.inviteCode) {
     throw new Error('Invite code is required.');
   }
+
+  const photoDataUri = await fileToDataURI(data.photo);
   
-  let finalUrl: string;
-  if (isFirebaseEnabled && storage) {
-    const storagePath = `${data.inviteCode}/face-atlas.png`;
-    const storageRef = ref(storage, storagePath);
-    await uploadBytes(storageRef, data.photo, { contentType: data.photo.type });
-    finalUrl = await getDownloadURL(storageRef);
-  } else {
-    finalUrl = `data:${
-      data.photo.type
-    };base64,${Buffer.from(await data.photo.arrayBuffer()).toString(
-      'base64'
-    )}`;
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Create a game character based on the likeness of this boy. Focus on the face and make an illustration. White background please.' },
+          {
+            type: 'image_url',
+            image_url: {
+              url: photoDataUri,
+            },
+          },
+        ],
+      },
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_1234',
+            type: 'tool',
+            function: {
+              name: 'image_generation',
+              arguments: JSON.stringify({
+                 size: '1024x1536'
+              })
+            }
+          }
+        ]
+      }
+    ],
+    tool_choice: {
+      type: 'function',
+      function: { name: 'image_generation' }
+    }
+  });
+
+  const message = response.choices[0].message;
+  const toolCall = message.tool_calls?.[0];
+
+  if (!toolCall || toolCall.function.name !== 'image_generation') {
+      throw new Error('The model did not return an image generation request.');
   }
+
+  const args = JSON.parse(toolCall.function.arguments);
+  const revisedPrompt = args.prompt;
+  const size = args.size;
+
+  const imageResponse = await openai.images.generate({
+      model: 'dall-e-3',
+      prompt: revisedPrompt,
+      n: 1,
+      size: size,
+      response_format: 'b64_json',
+  });
+
+  const generatedImageB64 = imageResponse.data[0].b64_json;
+  if (!generatedImageB64) {
+      throw new Error('Failed to generate image or received no image data.');
+  }
+
+  const storagePath = `${data.inviteCode}/character.png`;
+  const storageRef = ref(storage, storagePath);
+
+  await uploadString(storageRef, generatedImageB64, 'base64', { contentType: 'image/png' });
+  const finalUrl = await getDownloadURL(storageRef);
+  
   return { assetUrl: finalUrl };
 }
 
