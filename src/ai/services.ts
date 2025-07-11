@@ -63,6 +63,13 @@ async function blobToDataURI(blob: Blob): Promise<string> {
   return `data:${blob.type};base64,${base64}`;
 }
 
+// Helper to extract storage path from a Firebase Storage URL
+function getPathFromUrl(url: string): string {
+    const baseUrl = `https://firebasestorage.googleapis.com/v0/b/${storage!.app.options.storageBucket}/o/`;
+    const path = url.replace(baseUrl, "").split("?")[0];
+    return decodeURIComponent(path);
+}
+
 // Step 1: Appearance
 export async function generateAppearanceCharacterAsset(
   data: OnboardingData
@@ -76,10 +83,10 @@ export async function generateAppearanceCharacterAsset(
 
   const photoDataUri = await fileToDataURI(data.photo);
   
-  console.log("About to call OpenAI");
+  console.log("About to call OpenAI for character generation");
 
   const response = await openai.responses.create({
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4o',
     input: [
         {
             role: 'user',
@@ -97,8 +104,6 @@ export async function generateAppearanceCharacterAsset(
     ],
     tools: [{
         type: 'image_generation',
-        quality: 'high',
-        moderation: 'low',
         size: '1024x1536'
     }]
   });
@@ -140,17 +145,18 @@ export async function generateAppearanceExpressionsAsset(
   }
   
   // 1. Fetch the character image from Firebase Storage
-  const characterImageRef = ref(storage, data.imageUrls.character);
+  const characterImagePath = getPathFromUrl(data.imageUrls.character);
+  const characterImageRef = ref(storage, characterImagePath);
   const characterImageBlob = await getBlob(characterImageRef);
   const characterImageDataUri = await blobToDataURI(characterImageBlob);
 
   // 2. Call OpenAI API to generate expressions
   const prompt = "Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put this face of the boy with a different varied facial expression. Top row: big happy smile mouth closed with eyes open; huge happy smile mouth closed with eyes open; huge laugh mouth open and eyes closed. Middle row: no smile with eyes looking top left; no smile with eyes looking straight; no smile with eyes looking bottom right. Bottom row: big sad frown with eyes open; huge angry frown with eyes open; huge frown crying with eyes closed and tears.";
 
-  console.log("About to call OpenAI");
+  console.log("About to call OpenAI for expressions");
 
   const response = await openai.responses.create({
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4o',
     input: [
       {
         role: 'user',
@@ -164,9 +170,7 @@ export async function generateAppearanceExpressionsAsset(
       {
         type: 'image_generation',
         size: '1024x1024',
-        quality: 'high',
-        background: 'transparent',
-        moderation: 'low',
+        background: 'transparent'
       },
     ],
   });
