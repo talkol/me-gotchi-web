@@ -86,7 +86,7 @@ export async function generateAppearanceCharacterAsset(
   console.log("About to call OpenAI for character generation");
 
   const response = await openai.responses.create({
-    model: 'gpt-4o',
+    model: 'gpt-4.1-mini',
     input: [
         {
             role: 'user',
@@ -104,6 +104,8 @@ export async function generateAppearanceCharacterAsset(
     ],
     tools: [{
         type: 'image_generation',
+        quality: 'high',
+        moderation: 'low',
         size: '1024x1536'
     }]
   });
@@ -156,7 +158,7 @@ export async function generateAppearanceExpressionsAsset(
   console.log("About to call OpenAI for expressions");
 
   const response = await openai.responses.create({
-    model: 'gpt-4o',
+    model: 'gpt-4.1-mini',
     input: [
       {
         role: 'user',
@@ -170,7 +172,9 @@ export async function generateAppearanceExpressionsAsset(
       {
         type: 'image_generation',
         size: '1024x1024',
-        background: 'transparent'
+        background: 'transparent',
+        quality: 'high',
+        moderation: 'low',
       },
     ],
   });
