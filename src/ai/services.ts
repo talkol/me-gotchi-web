@@ -77,7 +77,7 @@ export async function generateAppearanceCharacterAsset(
   const photoDataUri = await fileToDataURI(data.photo);
   
   const response = await openai.responses.create({
-    model: 'gpt-4.1',
+    model: 'gpt-4o',
     input: [
         {
             role: 'user',
@@ -95,10 +95,8 @@ export async function generateAppearanceCharacterAsset(
     ],
     tools: [{
         type: 'image_generation',
-        moderation: 'low',
         quality: 'high',
         size: '1024x1536',
-
     }]
   });
 
@@ -157,7 +155,6 @@ export async function generateAppearanceExpressionsAsset(
       {
         type: 'image_generation',
         size: '1024x1024',
-        background: 'transparent',
         quality: 'high',
         moderation: 'low'
       },
