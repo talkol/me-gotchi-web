@@ -1,10 +1,9 @@
+
 'use server';
 
 import type { OnboardingData } from '@/app/actions';
 import { isFirebaseEnabled, storage } from '@/lib/firebase';
 import { getBlob, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-
-// --- Asset Generation Functions (Test Logic) ---
 
 async function copyAsset(
   baseImageUrl: string,
@@ -29,16 +28,17 @@ async function copyAsset(
   return baseImageUrl; // Fallback for local mode
 }
 
-export async function generateAppearanceAsset(
+// Step 1: Appearance
+export async function generateAppearanceCharacterAsset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
   if (!data.photo) {
-    throw new Error('A photo is required to generate the appearance asset.');
+    throw new Error('A photo is required to generate the character asset.');
   }
   if (!data.inviteCode) {
     throw new Error('Invite code is required.');
   }
-
+  
   let finalUrl: string;
   if (isFirebaseEnabled && storage) {
     const storagePath = `${data.inviteCode}/face-atlas.png`;
@@ -55,53 +55,88 @@ export async function generateAppearanceAsset(
   return { assetUrl: finalUrl };
 }
 
-export async function generateFoodAsset(
+export async function generateAppearanceExpressionsAsset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) {
-    throw new Error('A base image URL is required.');
-  }
-  if (!data.inviteCode) {
-    throw new Error('Invite code is required.');
-  }
-  const assetUrl = await copyAsset(
-    data.imageUrl,
-    data.inviteCode,
-    'food-atlas.png'
-  );
+  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
+  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'expressions.png');
   return { assetUrl };
 }
 
-export async function generateActivitiesAsset(
+export async function generateAppearanceRemoveBgAsset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) {
-    throw new Error('A base image URL is required.');
-  }
-  if (!data.inviteCode) {
-    throw new Error('Invite code is required.');
-  }
-  const assetUrl = await copyAsset(
-    data.imageUrl,
-    data.inviteCode,
-    'activities-atlas.png'
-  );
+  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
+  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'character-no-bg.png');
   return { assetUrl };
 }
 
-export async function generateEnvironmentsAsset(
+
+// Step 2: Food
+export async function generateFoodIconsAsset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) {
-    throw new Error('A base image URL is required.');
-  }
-  if (!data.inviteCode) {
-    throw new Error('Invite code is required.');
-  }
-  const assetUrl = await copyAsset(
-    data.imageUrl,
-    data.inviteCode,
-    'environments-atlas.png'
-  );
+  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
+  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'food-icons.png');
+  return { assetUrl };
+}
+
+export async function generateFoodRemoveBgAsset(
+  data: OnboardingData
+): Promise<{ assetUrl: string }> {
+  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
+  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'food-no-bg.png');
+  return { assetUrl };
+}
+
+
+// Step 3: Activities
+export async function generateActivitiesIconsAsset(
+  data: OnboardingData
+): Promise<{ assetUrl: string }> {
+  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
+  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'activities-icons.png');
+  return { assetUrl };
+}
+
+export async function generateActivitiesRemoveBgAsset(
+  data: OnboardingData
+): Promise<{ assetUrl: string }> {
+  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
+  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'activities-no-bg.png');
+  return { assetUrl };
+}
+
+
+// Step 4: Environments
+export async function generateEnvironments1Asset(
+  data: OnboardingData
+): Promise<{ assetUrl: string }> {
+  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
+  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'environment-1.png');
+  return { assetUrl };
+}
+
+export async function generateEnvironments2Asset(
+  data: OnboardingData
+): Promise<{ assetUrl: string }> {
+  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
+  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'environment-2.png');
+  return { assetUrl };
+}
+
+export async function generateEnvironments3Asset(
+  data: OnboardingData
+): Promise<{ assetUrl: string }> {
+  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
+  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'environment-3.png');
+  return { assetUrl };
+}
+
+export async function generateEnvironments4Asset(
+  data: OnboardingData
+): Promise<{ assetUrl: string }> {
+  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
+  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'environment-4.png');
   return { assetUrl };
 }

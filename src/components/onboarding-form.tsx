@@ -62,6 +62,7 @@ const OnboardingFormSchema = z.object({
   inviteCode: z.string().min(1),
   step: z.coerce.number().min(1).max(5),
   imageUrl: z.string().optional(),
+  generationType: z.string().optional(),
 }).superRefine((data, ctx) => {
     const step = data.step;
 
@@ -109,27 +110,56 @@ const OnboardingFormSchema = z.object({
 });
 type OnboardingFormData = z.infer<typeof OnboardingFormSchema>;
 
-const STEPS = [
-  { id: 1, title: "Appearance", fields: ["firstName", "gender", "age", "photo"] },
-  { id: 2, title: "Food Preferences", fields: ["likedFoods", "dislikedFoods", "likedDrinks", "dislikedDrinks"] },
-  { id: 3, title: "Activity Preferences", fields: ["likedFunActivities", "dislikedFunActivities", "likedExerciseActivities", "dislikedExerciseActivities"] },
-  { id: 4, title: "Environments", fields: ["environments"] },
-  { id: 5, title: "All Set!", fields: [] },
+type StepGenerationConfig = {
+    title: string;
+    generationType: string;
+    imageUrlKey: keyof StepImageUrls;
+    dependencies?: (keyof StepImageUrls)[];
+};
+
+type StepConfig = {
+    id: number;
+    title: string;
+    fields: (keyof OnboardingFormData)[];
+    generations: StepGenerationConfig[];
+};
+
+const STEPS: StepConfig[] = [
+  { id: 1, title: "Appearance", fields: ["firstName", "gender", "age", "photo"], generations: [
+      { title: "Generate Character", generationType: "character", imageUrlKey: "character" },
+      { title: "Generate Expressions", generationType: "expressions", imageUrlKey: "expressions", dependencies: ["character"]},
+      { title: "Remove Background", generationType: "removeBg", imageUrlKey: "removeBg", dependencies: ["character"]},
+  ] },
+  { id: 2, title: "Food Preferences", fields: ["likedFoods", "dislikedFoods", "likedDrinks", "dislikedDrinks"], generations: [
+      { title: "Generate Icons", generationType: "foodIcons", imageUrlKey: "foodIcons" },
+      { title: "Remove Background", generationType: "foodRemoveBg", imageUrlKey: "foodRemoveBg" },
+  ] },
+  { id: 3, title: "Activity Preferences", fields: ["likedFunActivities", "dislikedFunActivities", "likedExerciseActivities", "dislikedExerciseActivities"], generations: [
+       { title: "Generate Icons", generationType: "activitiesIcons", imageUrlKey: "activitiesIcons" },
+       { title: "Remove Background", generationType: "activitiesRemoveBg", imageUrlKey: "activitiesRemoveBg" },
+  ] },
+  { id: 4, title: "Environments", fields: ["environments"], generations: [
+      { title: "Generate 1", generationType: "environment1", imageUrlKey: "environment1" },
+      { title: "Generate 2", generationType: "environment2", imageUrlKey: "environment2" },
+      { title: "Generate 3", generationType: "environment3", imageUrlKey: "environment3" },
+      { title: "Generate 4", generationType: "environment4", imageUrlKey: "environment4" },
+  ] },
+  { id: 5, title: "All Set!", fields: [], generations: [] },
 ];
 
-function GenerateButton({ isGenerating, hasBeenGenerated }: { isGenerating: boolean; hasBeenGenerated: boolean }) {
+const GenerateButton = ({ isGenerating, hasBeenGenerated, title }: { isGenerating: boolean; hasBeenGenerated: boolean, title: string }) => {
   return (
     <Button type="submit" size="lg" className="w-full font-bold" disabled={isGenerating}>
       {isGenerating ? (
         <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
       ) : hasBeenGenerated ? (
-        <><CheckCircle className="mr-2 h-4 w-4" /> Generated! Click to Regenerate</>
+        <><CheckCircle className="mr-2 h-4 w-4" /> Regenerate</>
       ) : (
-        <><Wand2 className="mr-2 h-4 w-4" /> Generate</>
+        <><Wand2 className="mr-2 h-4 w-4" /> {title}</>
       )}
     </Button>
   );
-}
+};
 
 const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: string; isGenerating: boolean, status: FormState['status'], message: string }) => {
     const showLoading = isGenerating && !imageUrl;
@@ -158,11 +188,46 @@ const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: 
     }, [imageUrl, isGenerating, status, message, showPreviousImageWhileLoading, showLoading]);
 
     return (
-        <div className="w-full max-w-md mx-auto aspect-square bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden">
+        <div className="w-full mx-auto aspect-square bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden">
             {AssetDisplay}
         </div>
     );
 };
+
+const GenerationUnit = ({
+    title,
+    generationType,
+    imageUrl,
+    state,
+    isGenerating,
+    hasBeenGenerated,
+    isLocked,
+    onGenerate
+}: {
+    title: string;
+    generationType: string;
+    imageUrl?: string;
+    state: FormState;
+    isGenerating: boolean;
+    hasBeenGenerated: boolean;
+    isLocked: boolean;
+    onGenerate: (generationType: string) => void;
+}) => (
+    <div className="flex flex-col justify-start h-full space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); if (!isLocked) onGenerate(generationType); }}>
+            <Button type="submit" size="lg" className="w-full font-bold" disabled={isGenerating || isLocked}>
+                {isGenerating ? (
+                    <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
+                ) : hasBeenGenerated ? (
+                    <><CheckCircle className="mr-2 h-4 w-4" /> Regenerate</>
+                ) : (
+                    <><Wand2 className="mr-2 h-4 w-4" /> {title}</>
+                )}
+            </Button>
+        </form>
+        <AssetPreview imageUrl={imageUrl} isGenerating={isGenerating} status={state.status} message={state.message} />
+    </div>
+);
 
 
 const PreferenceItem = ({
@@ -223,14 +288,10 @@ const PreferenceItem = ({
   );
 };
 
-const StepCard = ({ title, children, imageUrl, state, isGenerating, hasBeenGenerated, isFinalStep = false }: {
+const StepCard = ({ title, children, generationUnits }: {
     title: string;
     children: React.ReactNode;
-    imageUrl?: string;
-    state: FormState;
-    isGenerating: boolean;
-    hasBeenGenerated: boolean;
-    isFinalStep?: boolean;
+    generationUnits: React.ReactNode;
 }) => (
     <Card className="shadow-lg">
         <CardHeader><CardTitle className="font-headline text-2xl">{title}</CardTitle></CardHeader>
@@ -240,16 +301,7 @@ const StepCard = ({ title, children, imageUrl, state, isGenerating, hasBeenGener
              <div>
                 <h3 className="text-xl font-headline mb-4">Result</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    <div className="flex flex-col justify-start h-full space-y-4">
-                        <GenerateButton isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated}/>
-                        <p className="text-xs text-muted-foreground text-left">
-                            {isFinalStep
-                                ? "Press 'Generate' to create your final Me-Gotchi assets. The assets will be stored and become available in the game."
-                                : "Press 'Generate' to use some AI magic and generate your unique game assets. You can generate again if you're not happy with the result. The next step will unlock upon successful generation."
-                            }
-                        </p>
-                    </div>
-                    <AssetPreview imageUrl={imageUrl} isGenerating={isGenerating} status={state.status} message={state.message} />
+                   {generationUnits}
                 </div>
             </div>
         </CardContent>
@@ -440,18 +492,32 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => (
     </Card>
 );
 
+type StepImageUrls = {
+  character?: string;
+  expressions?: string;
+  removeBg?: string;
+  foodIcons?: string;
+  foodRemoveBg?: string;
+  activitiesIcons?: string;
+  activitiesRemoveBg?: string;
+  environment1?: string;
+  environment2?: string;
+  environment3?: string;
+  environment4?: string;
+};
+
+
 export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   
-  const [stepImageUrls, setStepImageUrls] = useState<Record<number, string | undefined>>({});
-  const lastActionStep = useRef<number | null>(null);
+  const [imageUrls, setImageUrls] = useState<StepImageUrls>({});
+  const [activeGeneration, setActiveGeneration] = useState<string | null>(null);
 
   const initialState: FormState = { status: "idle", message: "" };
-  const [state, setState] = useState<FormState>(initialState);
-  const [isGenerating, setIsGenerating] = useState(false);
-
+  const [lastResult, setLastResult] = useState<FormState>(initialState);
+  
   const form = useForm<OnboardingFormData>({
     resolver: zodResolver(OnboardingFormSchema),
     mode: "onTouched",
@@ -475,7 +541,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     },
   });
 
-  const { control, handleSubmit, watch, setError, setValue } = form;
+  const { control, handleSubmit, watch, setError, setValue, trigger } = form;
 
   useEffect(() => {
     setValue('step', currentStep, { shouldValidate: true });
@@ -486,29 +552,39 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   }, [currentStep]);
 
   useEffect(() => {
-    if (state.status === "error") {
-      setIsGenerating(false);
+    if (lastResult.status === "error") {
+      setActiveGeneration(null);
       toast({
         variant: "destructive",
         title: "Oh no! Something went wrong.",
-        description: state.message || "Please check the form for errors.",
+        description: lastResult.message || "Please check the form for errors.",
       });
-      if (state.validationErrors) {
-        Object.entries(state.validationErrors).forEach(([field, error]: [any, any]) => {
+      if (lastResult.validationErrors) {
+        Object.entries(lastResult.validationErrors).forEach(([field, error]: [any, any]) => {
            if (error && error._errors && error._errors.length > 0) {
               setError(field as any, { type: 'server', message: error._errors[0] });
            }
         });
       }
     }
-    if (state.status === "success" && state.imageUrl) {
-       setIsGenerating(false);
-       if (lastActionStep.current === 1) {
-         setValue("imageUrl", state.imageUrl);
+    if (lastResult.status === "success" && lastResult.imageUrl && lastResult.generationType) {
+       setActiveGeneration(null);
+       const generationType = lastResult.generationType as keyof StepImageUrls;
+
+       setImageUrls(prev => ({...prev, [generationType]: lastResult.imageUrl}));
+       
+       if (generationType === 'character') {
+         setValue("imageUrl", lastResult.imageUrl);
        }
-       setStepImageUrls(prev => ({...prev, [lastActionStep.current!]: state.imageUrl}));
+
+       if (currentStep !== 4) {
+        toast({
+            title: "Generation Complete!",
+            description: lastResult.message
+        });
+       }
     }
-  }, [state, toast, setError, setValue]);
+  }, [lastResult, toast, setError, setValue, currentStep]);
 
   const handleNext = () => {
     if (currentStep < 5) {
@@ -522,22 +598,61 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     }
   };
   
-  const onSubmit = async () => {
-    // The validation is now handled by the zodResolver with the superRefine logic.
-    // If validation fails, react-hook-form will prevent this function from being called.
-    lastActionStep.current = currentStep;
+  const onGenerate = async (generationType: string) => {
+    const stepConfig = STEPS.find(s => s.id === currentStep);
+    if (!stepConfig) return;
+
+    const isValid = await trigger(stepConfig.fields as any);
+    if (!isValid) {
+        toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Please fill out all required fields for this step before generating.",
+        });
+        return;
+    }
+
+    setActiveGeneration(generationType);
     
-    setIsGenerating(true);
     const formData = new FormData(formRef.current!);
-    // We need to ensure the current step is on the FormData
     formData.set('step', String(currentStep));
+    formData.set('generationType', generationType);
+    
     const result = await generateMeGotchiAsset(formData);
-    setState(result);
+    setLastResult(result);
   }
   
-  const hasBeenGenerated = !!stepImageUrls[currentStep];
-  const stepState = lastActionStep.current === currentStep ? state : initialState;
+  const stepConfig = STEPS.find(s => s.id === currentStep);
+  const isStepComplete = stepConfig?.generations.every(g => !!imageUrls[g.imageUrlKey as keyof StepImageUrls]) ?? false;
+  
+  const renderGenerationUnits = (step: number) => {
+      const config = STEPS.find(s => s.id === step);
+      if (!config) return null;
 
+      return config.generations.map(genConfig => {
+          const genType = genConfig.generationType;
+          const isGenerating = activeGeneration === genType;
+          const hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
+          const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle', message: '' };
+          
+          const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep]) ?? true;
+          const isLocked = !dependenciesMet;
+
+          return (
+            <GenerationUnit
+              key={genType}
+              title={genConfig.title}
+              generationType={genType}
+              imageUrl={imageUrls[genConfig.imageUrlKey]}
+              state={resultForThisUnit as FormState}
+              isGenerating={isGenerating}
+              hasBeenGenerated={hasBeenGenerated}
+              isLocked={isLocked}
+              onGenerate={onGenerate}
+            />
+          );
+      });
+  }
 
   return (
     <div>
@@ -546,28 +661,29 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         <p className="text-center text-sm text-muted-foreground font-medium">{`Step ${currentStep} of 5: ${STEPS[currentStep-1].title}`}</p>
       </div>
        <Form {...form}>
-        <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        <form ref={formRef} noValidate className="space-y-8">
             <input type="hidden" {...form.register("inviteCode")} />
             <input type="hidden" {...form.register("step")} />
             <input type="hidden" {...form.register("imageUrl")} />
+            <input type="hidden" {...form.register("generationType")} />
 
             <div className={currentStep === 1 ? 'block' : 'hidden'}>
-                <StepCard title="Step 1: Appearance" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} imageUrl={stepImageUrls[1] ?? watch('imageUrl')}>
+                <StepCard title="Step 1: Appearance" generationUnits={renderGenerationUnits(1)}>
                     <Step1 control={control} watch={watch} />
                 </StepCard>
             </div>
             <div className={currentStep === 2 ? 'block' : 'hidden'}>
-                <StepCard title="Step 2: Food Preferences" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} imageUrl={stepImageUrls[2]}>
+                <StepCard title="Step 2: Food Preferences" generationUnits={renderGenerationUnits(2)}>
                     <Step2 control={control} watch={watch} />
                 </StepCard>
             </div>
             <div className={currentStep === 3 ? 'block' : 'hidden'}>
-                <StepCard title="Step 3: Activity Preferences" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} imageUrl={stepImageUrls[3]}>
+                <StepCard title="Step 3: Activity Preferences" generationUnits={renderGenerationUnits(3)}>
                     <Step3 control={control} watch={watch} />
                 </StepCard>
             </div>
              <div className={currentStep === 4 ? 'block' : 'hidden'}>
-                <StepCard title="Step 4: Environments" state={stepState} isGenerating={isGenerating} hasBeenGenerated={hasBeenGenerated} isFinalStep={true} imageUrl={stepImageUrls[4]}>
+                <StepCard title="Step 4: Environments" generationUnits={renderGenerationUnits(4)}>
                     <Step4 control={control} />
                 </StepCard>
             </div>
@@ -587,13 +703,13 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
                 )}
                 
                 {currentStep < 4 && (
-                    <Button type="button" size="lg" onClick={handleNext} disabled={!stepImageUrls[currentStep] || isGenerating}>
+                    <Button type="button" size="lg" onClick={handleNext} disabled={!isStepComplete || !!activeGeneration}>
                         Next Step <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 )}
 
                 {currentStep === 4 && (
-                     <Button type="button" size="lg" onClick={handleNext} disabled={!stepImageUrls[currentStep] || isGenerating}>
+                     <Button type="button" size="lg" onClick={handleNext} disabled={!isStepComplete || !!activeGeneration}>
                         Done <CheckCircle className="ml-2 h-4 w-4" />
                     </Button>
                 )}

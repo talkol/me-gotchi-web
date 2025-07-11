@@ -2,10 +2,17 @@
 'use server';
 
 import {
-  generateActivitiesAsset,
-  generateAppearanceAsset,
-  generateEnvironmentsAsset,
-  generateFoodAsset,
+  generateAppearanceCharacterAsset,
+  generateAppearanceExpressionsAsset,
+  generateAppearanceRemoveBgAsset,
+  generateFoodIconsAsset,
+  generateFoodRemoveBgAsset,
+  generateActivitiesIconsAsset,
+  generateActivitiesRemoveBgAsset,
+  generateEnvironments1Asset,
+  generateEnvironments2Asset,
+  generateEnvironments3Asset,
+  generateEnvironments4Asset,
 } from '@/ai/services';
 import { z } from 'zod';
 
@@ -80,7 +87,8 @@ const OnboardingSchema = z.object({
 
   inviteCode: z.string().min(1, 'Invite code is required.'),
   step: z.coerce.number().min(1).max(5),
-  imageUrl: z.string().optional(), // This now carries the BASE image URL after step 1
+  imageUrl: z.string().optional(),
+  generationType: z.string().min(1, 'Generation type is required.'),
 });
 
 export type OnboardingData = z.infer<typeof OnboardingSchema>;
@@ -89,6 +97,7 @@ export type FormState = {
   status: 'idle' | 'success' | 'error' | 'generating';
   message: string;
   imageUrl?: string;
+  generationType?: string;
   validationErrors?: Record<string, any>;
 };
 
@@ -133,6 +142,7 @@ export async function generateMeGotchiAsset(
     inviteCode: formData.get('inviteCode'),
     step: formData.get('step'),
     imageUrl: formData.get('imageUrl'),
+    generationType: formData.get('generationType'),
     likedFoods: parseArrayFromFormData(formData, 'likedFoods', 3),
     dislikedFoods: parseArrayFromFormData(formData, 'dislikedFoods', 3),
     likedDrinks: parseArrayFromFormData(formData, 'likedDrinks', 2),
@@ -170,37 +180,71 @@ export async function generateMeGotchiAsset(
       status: 'error',
       message: detailedMessage,
       validationErrors: flatErrors.fieldErrors,
+      generationType: rawFormData.generationType as string,
     };
   }
 
   const data = validationResult.data;
-  const { step } = data;
+  const { generationType } = data;
 
   try {
     let result: { assetUrl: string };
     let successMessage: string;
 
-    switch (step) {
-      case 1:
-        result = await generateAppearanceAsset(data);
-        successMessage = 'Step 1 complete!';
+    switch (generationType) {
+      // Step 1
+      case 'character':
+        result = await generateAppearanceCharacterAsset(data);
+        successMessage = 'Character generated.';
         break;
-      case 2:
-        result = await generateFoodAsset(data);
-        successMessage = 'Step 2 preview generated.';
+      case 'expressions':
+        result = await generateAppearanceExpressionsAsset(data);
+        successMessage = 'Expressions generated.';
         break;
-      case 3:
-        result = await generateActivitiesAsset(data);
-        successMessage = 'Step 3 preview generated.';
+      case 'removeBg':
+        result = await generateAppearanceRemoveBgAsset(data);
+        successMessage = 'Background removed.';
         break;
-      case 4:
-        result = await generateEnvironmentsAsset(data);
-        successMessage = 'Step 4 preview generated.';
+      // Step 2
+      case 'foodIcons':
+        result = await generateFoodIconsAsset(data);
+        successMessage = 'Food icons generated.';
+        break;
+      case 'foodRemoveBg':
+        result = await generateFoodRemoveBgAsset(data);
+        successMessage = 'Background removed.';
+        break;
+      // Step 3
+      case 'activitiesIcons':
+        result = await generateActivitiesIconsAsset(data);
+        successMessage = 'Activity icons generated.';
+        break;
+      case 'activitiesRemoveBg':
+        result = await generateActivitiesRemoveBgAsset(data);
+        successMessage = 'Background removed.';
+        break;
+      // Step 4
+      case 'environment1':
+        result = await generateEnvironments1Asset(data);
+        successMessage = 'Environment 1 generated.';
+        break;
+      case 'environment2':
+        result = await generateEnvironments2Asset(data);
+        successMessage = 'Environment 2 generated.';
+        break;
+      case 'environment3':
+        result = await generateEnvironments3Asset(data);
+        successMessage = 'Environment 3 generated.';
+        break;
+      case 'environment4':
+        result = await generateEnvironments4Asset(data);
+        successMessage = 'Environment 4 generated.';
         break;
       default:
         return {
           status: 'error',
-          message: 'Invalid step provided for generation.',
+          message: 'Invalid generation type provided.',
+          generationType: generationType,
         };
     }
 
@@ -208,14 +252,16 @@ export async function generateMeGotchiAsset(
       status: 'success',
       message: successMessage,
       imageUrl: result.assetUrl,
+      generationType: generationType,
     };
   } catch (error) {
-    console.error(`Error in generateMeGotchiAsset (Step ${step}):`, error);
+    console.error(`Error in generateMeGotchiAsset (Type: ${generationType}):`, error);
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred.';
     return {
       status: 'error',
       message: `Action failed: ${errorMessage}`,
+      generationType: generationType,
     };
   }
 }
