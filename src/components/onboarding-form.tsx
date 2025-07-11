@@ -6,7 +6,7 @@ import { useForm, useFieldArray, Control, UseFormWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
-import { generateMeGotchiAsset, type FormState } from "@/app/actions";
+import { generateMeGotchiAsset, type FormState, type StepImageUrls as ServerStepImageUrls } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,7 @@ const OnboardingFormSchema = z.object({
   inviteCode: z.string().min(1),
   step: z.coerce.number().min(1).max(5),
   imageUrl: z.string().optional(),
+  imageUrls: z.record(z.string()).optional(),
   generationType: z.string().optional(),
 }).superRefine((data, ctx) => {
     const step = data.step;
@@ -81,7 +82,7 @@ const OnboardingFormSchema = z.object({
         }
         if (!(data.photo instanceof File) || data.photo.size === 0) {
             // Only require a photo if one hasn't been uploaded yet (i.e., imageUrl is not set)
-            if (!data.imageUrl) {
+            if (!data.imageUrls?.character) {
                 ctx.addIssue({ path: ['photo'], message: 'A photo is required.', code: 'custom'});
             }
         } else {
@@ -110,6 +111,8 @@ const OnboardingFormSchema = z.object({
 });
 type OnboardingFormData = z.infer<typeof OnboardingFormSchema>;
 
+type StepImageUrls = ServerStepImageUrls;
+
 type StepGenerationConfig = {
     title: string;
     generationType: string;
@@ -131,18 +134,18 @@ const STEPS: StepConfig[] = [
       { title: "Remove Background", generationType: "removeBg", imageUrlKey: "removeBg", dependencies: ["character"]},
   ] },
   { id: 2, title: "Food Preferences", fields: ["likedFoods", "dislikedFoods", "likedDrinks", "dislikedDrinks"], generations: [
-      { title: "Generate Icons", generationType: "foodIcons", imageUrlKey: "foodIcons" },
-      { title: "Remove Background", generationType: "foodRemoveBg", imageUrlKey: "foodRemoveBg" },
+      { title: "Generate Icons", generationType: "foodIcons", imageUrlKey: "foodIcons", dependencies: ["character"] },
+      { title: "Remove Background", generationType: "foodRemoveBg", imageUrlKey: "foodRemoveBg", dependencies: ["foodIcons"] },
   ] },
   { id: 3, title: "Activity Preferences", fields: ["likedFunActivities", "dislikedFunActivities", "likedExerciseActivities", "dislikedExerciseActivities"], generations: [
-       { title: "Generate Icons", generationType: "activitiesIcons", imageUrlKey: "activitiesIcons" },
-       { title: "Remove Background", generationType: "activitiesRemoveBg", imageUrlKey: "activitiesRemoveBg" },
+       { title: "Generate Icons", generationType: "activitiesIcons", imageUrlKey: "activitiesIcons", dependencies: ["character"] },
+       { title: "Remove Background", generationType: "activitiesRemoveBg", imageUrlKey: "activitiesRemoveBg", dependencies: ["activitiesIcons"] },
   ] },
   { id: 4, title: "Environments", fields: ["environments"], generations: [
-      { title: "Generate 1", generationType: "environment1", imageUrlKey: "environment1" },
-      { title: "Generate 2", generationType: "environment2", imageUrlKey: "environment2" },
-      { title: "Generate 3", generationType: "environment3", imageUrlKey: "environment3" },
-      { title: "Generate 4", generationType: "environment4", imageUrlKey: "environment4" },
+      { title: "Generate 1", generationType: "environment1", imageUrlKey: "environment1", dependencies: ["character"] },
+      { title: "Generate 2", generationType: "environment2", imageUrlKey: "environment2", dependencies: ["character"] },
+      { title: "Generate 3", generationType: "environment3", imageUrlKey: "environment3", dependencies: ["character"] },
+      { title: "Generate 4", generationType: "environment4", imageUrlKey: "environment4", dependencies: ["character"] },
   ] },
   { id: 5, title: "All Set!", fields: [], generations: [] },
 ];
@@ -482,21 +485,6 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => (
     </Card>
 );
 
-type StepImageUrls = {
-  character?: string;
-  expressions?: string;
-  removeBg?: string;
-  foodIcons?: string;
-  foodRemoveBg?: string;
-  activitiesIcons?: string;
-  activitiesRemoveBg?: string;
-  environment1?: string;
-  environment2?: string;
-  environment3?: string;
-  environment4?: string;
-};
-
-
 export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
@@ -519,6 +507,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       inviteCode: inviteCode,
       step: 1,
       imageUrl: "",
+      imageUrls: {},
       likedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
       dislikedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
       likedDrinks: [...Array(2)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
@@ -535,7 +524,8 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
   useEffect(() => {
     setValue('step', currentStep, { shouldValidate: true });
-  }, [currentStep, setValue]);
+    setValue('imageUrls', imageUrls);
+  }, [currentStep, setValue, imageUrls]);
   
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -607,6 +597,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     const formData = new FormData(formRef.current!);
     formData.set('step', String(currentStep));
     formData.set('generationType', generationType);
+    formData.set('imageUrls', JSON.stringify(imageUrls));
     
     const result = await generateMeGotchiAsset(formData);
     setLastResult(result);

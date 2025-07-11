@@ -33,6 +33,8 @@ const EnvironmentItemSchema = z.object({
   explanation: z.string().optional(),
 });
 
+const ImageUrlsSchema = z.record(z.string().url()).optional();
+
 // Main server-side validation schema.
 const OnboardingSchema = z.object({
   firstName: z.preprocess(
@@ -88,10 +90,12 @@ const OnboardingSchema = z.object({
   inviteCode: z.string().min(1, 'Invite code is required.'),
   step: z.coerce.number().min(1).max(5),
   imageUrl: z.string().optional(),
+  imageUrls: ImageUrlsSchema,
   generationType: z.string().min(1, 'Generation type is required.'),
 });
 
 export type OnboardingData = z.infer<typeof OnboardingSchema>;
+export type StepImageUrls = z.infer<typeof ImageUrlsSchema>;
 
 export type FormState = {
   status: 'idle' | 'success' | 'error' | 'generating';
@@ -134,6 +138,8 @@ function parseArrayFromFormData<T>(
 export async function generateMeGotchiAsset(
   formData: FormData
 ): Promise<FormState> {
+  const imageUrlsRaw = formData.get('imageUrls') as string | null;
+
   const rawFormData = {
     firstName: formData.get('firstName'),
     gender: formData.get('gender'),
@@ -142,6 +148,7 @@ export async function generateMeGotchiAsset(
     inviteCode: formData.get('inviteCode'),
     step: formData.get('step'),
     imageUrl: formData.get('imageUrl'),
+    imageUrls: imageUrlsRaw ? JSON.parse(imageUrlsRaw) : {},
     generationType: formData.get('generationType'),
     likedFoods: parseArrayFromFormData(formData, 'likedFoods', 3),
     dislikedFoods: parseArrayFromFormData(formData, 'dislikedFoods', 3),

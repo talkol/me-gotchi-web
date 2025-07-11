@@ -58,16 +58,16 @@ export async function generateAppearanceCharacterAsset(
 export async function generateAppearanceExpressionsAsset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
-  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'expressions.png');
+  if (!data.imageUrls?.character) { throw new Error('A base character image is required.'); }
+  const assetUrl = await copyAsset(data.imageUrls.character, data.inviteCode!, 'expressions.png');
   return { assetUrl };
 }
 
 export async function generateAppearanceRemoveBgAsset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
-  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'character-no-bg.png');
+  if (!data.imageUrls?.character) { throw new Error('A base character image is required.'); }
+  const assetUrl = await copyAsset(data.imageUrls.character, data.inviteCode!, 'character-no-bg.png');
   return { assetUrl };
 }
 
@@ -76,16 +76,16 @@ export async function generateAppearanceRemoveBgAsset(
 export async function generateFoodIconsAsset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
-  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'food-icons.png');
+  if (!data.imageUrls?.character) { throw new Error('A base character image is required.'); }
+  const assetUrl = await copyAsset(data.imageUrls.character, data.inviteCode!, 'food-icons.png');
   return { assetUrl };
 }
 
 export async function generateFoodRemoveBgAsset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
-  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'food-no-bg.png');
+  if (!data.imageUrls?.foodIcons) { throw new Error('Food icons asset is required.'); }
+  const assetUrl = await copyAsset(data.imageUrls.foodIcons, data.inviteCode!, 'food-no-bg.png');
   return { assetUrl };
 }
 
@@ -94,16 +94,16 @@ export async function generateFoodRemoveBgAsset(
 export async function generateActivitiesIconsAsset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
-  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'activities-icons.png');
+  if (!data.imageUrls?.character) { throw new Error('A base character image is required.'); }
+  const assetUrl = await copyAsset(data.imageUrls.character, data.inviteCode!, 'activities-icons.png');
   return { assetUrl };
 }
 
 export async function generateActivitiesRemoveBgAsset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
-  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'activities-no-bg.png');
+  if (!data.imageUrls?.activitiesIcons) { throw new Error('Activity icons asset is required.'); }
+  const assetUrl = await copyAsset(data.imageUrls.activitiesIcons, data.inviteCode!, 'activities-no-bg.png');
   return { assetUrl };
 }
 
@@ -112,31 +112,31 @@ export async function generateActivitiesRemoveBgAsset(
 export async function generateEnvironments1Asset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
-  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'environment-1.png');
+  if (!data.imageUrls?.character) { throw new Error('A base character image is required.'); }
+  const assetUrl = await copyAsset(data.imageUrls.character, data.inviteCode!, 'environment-1.png');
   return { assetUrl };
 }
 
 export async function generateEnvironments2Asset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
-  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'environment-2.png');
+  if (!data.imageUrls?.character) { throw new Error('A base character image is required.'); }
+  const assetUrl = await copyAsset(data.imageUrls.character, data.inviteCode!, 'environment-2.png');
   return { assetUrl };
 }
 
 export async function generateEnvironments3Asset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
-  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'environment-3.png');
+  if (!data.imageUrls?.character) { throw new Error('A base character image is required.'); }
+  const assetUrl = await copyAsset(data.imageUrls.character, data.inviteCode!, 'environment-3.png');
   return { assetUrl };
 }
 
 export async function generateEnvironments4Asset(
   data: OnboardingData
 ): Promise<{ assetUrl: string }> {
-  if (!data.imageUrl) { throw new Error('A base image URL is required.'); }
-  const assetUrl = await copyAsset(data.imageUrl, data.inviteCode!, 'environment-4.png');
+  if (!data.imageUrls?.character) { throw new Error('A base character image is required.'); }
+  const assetUrl = await copyAsset(data.imageUrls.character, data.inviteCode!, 'environment-4.png');
   return { assetUrl };
 }
