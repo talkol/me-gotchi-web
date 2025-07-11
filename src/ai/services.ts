@@ -156,7 +156,7 @@ export async function generateAppearanceExpressionsAsset(
         type: 'image_generation',
         size: '1024x1024',
         quality: 'high',
-        moderation: 'low'
+        background: 'transparent',
       },
     ],
   });
