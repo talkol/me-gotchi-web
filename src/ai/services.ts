@@ -56,6 +56,13 @@ function fileToDataURI(file: File): Promise<string> {
   });
 }
 
+// Helper to convert a Blob to a Data URI
+async function blobToDataURI(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString('base64');
+  return `data:${blob.type};base64,${base64}`;
+}
+
 // Step 1: Appearance
 export async function generateAppearanceCharacterAsset(
   data: OnboardingData
@@ -70,14 +77,14 @@ export async function generateAppearanceCharacterAsset(
   const photoDataUri = await fileToDataURI(data.photo);
   
   const response = await openai.responses.create({
-    model: 'gpt-4.1',
+    model: 'gpt-4o',
     input: [
         {
             role: 'user',
             content: [
                 { 
                   type: 'input_text', 
-                  text: 'Create a video game character illustration based on the likeness of this photo. Focus on facial features. White background please.',
+                  text: 'Create a game character based on the likeness of this boy. Focus on the face and make an illustration. White background please.',
                 },
                 {
                     type: 'input_image',
@@ -122,8 +129,56 @@ export async function generateAppearanceExpressionsAsset(
 ): Promise<{ assetUrl: string }> {
   if (!data.imageUrls?.character) { throw new Error('A base character image is required.'); }
   if (!data.inviteCode) { throw new Error('Invite code is required.'); }
-  const assetUrl = await copyAsset(data.imageUrls.character, data.inviteCode, 'expressions.png');
-  return { assetUrl };
+  
+  if (!isFirebaseEnabled || !storage) {
+    throw new Error("Firebase must be configured to fetch the character image for expression generation.");
+  }
+  
+  // 1. Fetch the character image from Firebase Storage
+  const characterImageRef = ref(storage, data.imageUrls.character);
+  const characterImageBlob = await getBlob(characterImageRef);
+  const characterImageDataUri = await blobToDataURI(characterImageBlob);
+
+  // 2. Call OpenAI API to generate expressions
+  const prompt = "Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put this face of the boy with a different varied facial expression. Top row: big happy smile mouth closed with eyes open; huge happy smile mouth closed with eyes open; huge laugh mouth open and eyes closed. Middle row: no smile with eyes looking top left; no smile with eyes looking straight; no smile with eyes looking bottom right. Bottom row: big sad frown with eyes open; huge angry frown with eyes open; huge frown crying with eyes closed and tears.";
+
+  const response = await openai.responses.create({
+    model: 'gpt-4o',
+    input: [
+      {
+        role: 'user',
+        content: [
+          { type: 'input_text', text: prompt },
+          { type: 'input_image', image_url: characterImageDataUri },
+        ],
+      },
+    ],
+    tools: [
+      {
+        type: 'image_generation',
+        size: '1024x1024',
+        background: 'transparent',
+        quality: 'high',
+        moderation: 'low'
+      },
+    ],
+  });
+
+  const generatedImageB64 = response.output
+    .filter((output): output is OpenAI.ImageGenerationCall => output.type === 'image_generation_call')
+    .map(output => output.result)[0];
+
+  if (!generatedImageB64) {
+    throw new Error('Failed to generate expressions image or received no image data from OpenAI.');
+  }
+  
+  // 3. Upload the generated expressions image to Firebase Storage
+  const storagePath = `${data.inviteCode}/expressions.png`;
+  const storageRef = ref(storage, storagePath);
+  await uploadString(storageRef, generatedImageB64, 'base64', { contentType: 'image/png' });
+  const finalUrl = await getDownloadURL(storageRef);
+
+  return { assetUrl: finalUrl };
 }
 
 export async function generateAppearanceRemoveBgAsset(
