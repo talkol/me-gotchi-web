@@ -97,7 +97,7 @@ export async function generateAppearanceCharacterAsset(
         type: 'image_generation',
         quality: 'high',
         moderation: 'low',
-        size: '1024x1024'
+        size: '1024x1536'
     }]
   });
 
