@@ -77,7 +77,7 @@ export async function generateAppearanceCharacterAsset(
   const photoDataUri = await fileToDataURI(data.photo);
   
   const response = await openai.responses.create({
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4o',
     input: [
         {
             role: 'user',
@@ -100,6 +100,8 @@ export async function generateAppearanceCharacterAsset(
         size: '1024x1536'
     }]
   });
+
+  console.log("OpenAI Response (Character):", JSON.stringify(response, null, 2));
 
   const imageData = response.output
     .filter((output): output is OpenAI.ImageGenerationCall => output.type === 'image_generation_call')
@@ -144,7 +146,7 @@ export async function generateAppearanceExpressionsAsset(
   const prompt = "Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put this face of the boy with a different varied facial expression. Top row: big happy smile mouth closed with eyes open; huge happy smile mouth closed with eyes open; huge laugh mouth open and eyes closed. Middle row: no smile with eyes looking top left; no smile with eyes looking straight; no smile with eyes looking bottom right. Bottom row: big sad frown with eyes open; huge angry frown with eyes open; huge frown crying with eyes closed and tears.";
 
   const response = await openai.responses.create({
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4o',
     input: [
       {
         role: 'user',
@@ -164,6 +166,8 @@ export async function generateAppearanceExpressionsAsset(
       },
     ],
   });
+
+  console.log("OpenAI Response (Expressions):", JSON.stringify(response, null, 2));
 
   const imageData = response.output
     .filter((output): output is OpenAI.ImageGenerationCall => output.type === 'image_generation_call')
