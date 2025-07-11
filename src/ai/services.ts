@@ -77,7 +77,7 @@ export async function generateAppearanceCharacterAsset(
   const photoDataUri = await fileToDataURI(data.photo);
   
   const response = await openai.responses.create({
-    model: 'gpt-4o',
+    model: 'gpt-4.1',
     input: [
         {
             role: 'user',
