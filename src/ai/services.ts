@@ -85,10 +85,12 @@ export async function generateAppearanceCharacterAsset(
     ],
     tools: [{ 
         type: 'image_generation',
+    }],
+    tool_config: {
         image_generation: {
             size: '1024x1536'
         }
-    }],
+    }
   });
 
   const generatedImageB64 = response.output
