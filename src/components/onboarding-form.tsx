@@ -6,8 +6,9 @@ import { useForm, useFieldArray, Control, UseFormWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
-import { generateMeGotchiAsset, type FormState, type StepImageUrls as ServerStepImageUrls } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
+import { isFirebaseEnabled, getFunctions, httpsCallable, type FunctionsError } from "@/lib/firebase";
+
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,7 +112,14 @@ const OnboardingFormSchema = z.object({
 });
 type OnboardingFormData = z.infer<typeof OnboardingFormSchema>;
 
-type StepImageUrls = ServerStepImageUrls;
+type StepImageUrls = Record<string, string>;
+
+type GenerationState = {
+    status: "idle" | "success" | "error" | "generating";
+    message: string;
+    imageUrl?: string;
+    generationType?: string;
+};
 
 type StepGenerationConfig = {
     title: string;
@@ -150,7 +158,16 @@ const STEPS: StepConfig[] = [
   { id: 5, title: "All Set!", fields: [], generations: [] },
 ];
 
-const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: string; isGenerating: boolean, status: FormState['status'], message: string }) => {
+const fileToDataURI = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: string; isGenerating: boolean, status: GenerationState['status'], message: string }) => {
     const showLoading = isGenerating && !imageUrl;
     const showPreviousImageWhileLoading = isGenerating && imageUrl;
 
@@ -196,7 +213,7 @@ const GenerationUnit = ({
     title: string;
     generationType: string;
     imageUrl?: string;
-    state: FormState;
+    state: GenerationState;
     isGenerating: boolean;
     hasBeenGenerated: boolean;
     isLocked: boolean;
@@ -488,13 +505,11 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => (
 export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
-  const formRef = useRef<HTMLFormElement>(null);
   
   const [imageUrls, setImageUrls] = useState<StepImageUrls>({});
   const [activeGeneration, setActiveGeneration] = useState<string | null>(null);
 
-  const initialState: FormState = { status: "idle", message: "" };
-  const [lastResult, setLastResult] = useState<FormState>(initialState);
+  const [lastResult, setLastResult] = useState<GenerationState>({ status: "idle", message: "" });
   
   const form = useForm<OnboardingFormData>({
     resolver: zodResolver(OnboardingFormSchema),
@@ -520,7 +535,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     },
   });
 
-  const { control, handleSubmit, watch, setError, setValue, trigger } = form;
+  const { control, handleSubmit, watch, setError, setValue, trigger, getValues } = form;
 
   useEffect(() => {
     setValue('step', currentStep, { shouldValidate: true });
@@ -539,19 +554,12 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         title: "Oh no! Something went wrong.",
         description: lastResult.message || "Please check the form for errors.",
       });
-      if (lastResult.validationErrors) {
-        Object.entries(lastResult.validationErrors).forEach(([field, error]: [any, any]) => {
-           if (error && error._errors && error._errors.length > 0) {
-              setError(field as any, { type: 'server', message: error._errors[0] });
-           }
-        });
-      }
     }
     if (lastResult.status === "success" && lastResult.imageUrl && lastResult.generationType) {
        setActiveGeneration(null);
        const generationType = lastResult.generationType as keyof StepImageUrls;
 
-       setImageUrls(prev => ({...prev, [generationType]: lastResult.imageUrl}));
+       setImageUrls(prev => ({...prev, [generationType]: lastResult.imageUrl!}));
        
        if (generationType === 'character') {
          setValue("imageUrl", lastResult.imageUrl);
@@ -564,7 +572,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         });
        }
     }
-  }, [lastResult, toast, setError, setValue, currentStep]);
+  }, [lastResult, toast, setValue, currentStep]);
 
   const handleNext = async () => {
     if (currentStep < 5) {
@@ -579,6 +587,15 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   };
   
   const onGenerate = async (generationType: string) => {
+    if (!isFirebaseEnabled) {
+        toast({
+            variant: "destructive",
+            title: "Firebase Not Configured",
+            description: "Please configure Firebase to enable asset generation.",
+        });
+        return;
+    }
+
     const stepConfig = STEPS.find(s => s.id === currentStep);
     if (!stepConfig) return;
 
@@ -594,13 +611,41 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
     setActiveGeneration(generationType);
     
-    const formData = new FormData(formRef.current!);
-    formData.set('step', String(currentStep));
-    formData.set('generationType', generationType);
-    formData.set('imageUrls', JSON.stringify(imageUrls));
-    
-    const result = await generateMeGotchiAsset(formData);
-    setLastResult(result);
+    try {
+        const generateAsset = httpsCallable(getFunctions(), 'generateAsset');
+        const currentValues = getValues();
+        
+        let photoDataUri: string | undefined;
+        if (currentValues.photo instanceof File && currentValues.photo.size > 0) {
+            photoDataUri = await fileToDataURI(currentValues.photo);
+        }
+
+        const payload = {
+            generationType,
+            inviteCode: currentValues.inviteCode,
+            photoDataUri,
+            imageUrls: imageUrls,
+            // We can add more form data to the payload here as needed
+        };
+
+        const result = await generateAsset(payload) as { data: { assetUrl: string } };
+        
+        setLastResult({
+            status: 'success',
+            message: 'Asset generated successfully!',
+            imageUrl: result.data.assetUrl,
+            generationType: generationType,
+        });
+
+    } catch (error) {
+        console.error("Firebase function call failed:", error);
+        const functionsError = error as FunctionsError;
+        setLastResult({
+            status: 'error',
+            message: functionsError.message || 'An unknown error occurred.',
+            generationType: generationType,
+        });
+    }
   }
   
   const stepConfig = STEPS.find(s => s.id === currentStep);
@@ -616,7 +661,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
           const hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
           const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle', message: '' };
           
-          const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep]) ?? true;
+          const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
           const isLocked = !dependenciesMet;
 
           return (
@@ -625,7 +670,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               title={genConfig.title}
               generationType={genType}
               imageUrl={imageUrls[genConfig.imageUrlKey]}
-              state={resultForThisUnit as FormState}
+              state={resultForThisUnit}
               isGenerating={isGenerating}
               hasBeenGenerated={hasBeenGenerated}
               isLocked={isLocked}
@@ -642,7 +687,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         <p className="text-center text-sm text-muted-foreground font-medium">{`Step ${currentStep} of 5: ${STEPS[currentStep-1].title}`}</p>
       </div>
        <Form {...form}>
-        <form ref={formRef} noValidate className="space-y-8">
+        <form noValidate className="space-y-8">
             <input type="hidden" {...form.register("inviteCode")} />
             <input type="hidden" {...form.register("step")} />
             <input type="hidden" {...form.register("imageUrl")} />
