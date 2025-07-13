@@ -47,4 +47,4 @@ const isFirebaseEnabled = !!(
 );
 
 
-export { functions, isFirebaseEnabled };
+export { app, functions, isFirebaseEnabled };

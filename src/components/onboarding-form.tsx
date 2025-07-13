@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { functions } from "@/lib/firebase";
+import { app, functions, isFirebaseEnabled } from "@/lib/firebase";
 import { getFunctions, httpsCallable, type HttpsCallableError } from "firebase/functions";
 
 
@@ -604,7 +604,8 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     setActiveGeneration(generationType);
     
     try {
-        const generateAsset = httpsCallable(getFunctions(), 'generateAssetAppearanceCharacter');
+        const functionsInstance = getFunctions(app);
+        const generateAsset = httpsCallable(functionsInstance, 'generateAssetAppearanceCharacter');
         const currentValues = getValues();
         
         let photoDataUri: string | undefined;
