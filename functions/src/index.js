@@ -80,10 +80,9 @@ Focus on the face and make an illustration. White background please.`,
   );
 
   const imageData = response.output
-    .filter(
-        output.type === "image_generation_call",
-    )
+    .filter((output) => output.type === "image_generation_call")
     .map((output) => output.result);
+
 
   if (imageData.length === 0 || !imageData[0]) {
     throw new HttpsError(
@@ -142,3 +141,4 @@ export const generateAssetAppearanceCharacter = onCall({timeoutSeconds: 300}, as
     );
   }
 });
+
