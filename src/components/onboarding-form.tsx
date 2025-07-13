@@ -176,7 +176,7 @@ const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: 
         if (showPreviousImageWhileLoading || imageUrl) {
              return (
                 <div className="relative w-full h-full">
-                    <Image src={imageUrl!} alt="Generated Me-Gotchi Asset" width={512} height={512} className="rounded-lg object-cover w-full h-full" data-ai-hint="avatar character" />
+                    <Image src={imageUrl!} alt="Generated Me-Gotchi Asset" width={512} height={512} className="rounded-lg object-contain w-full h-full" />
                     {showPreviousImageWhileLoading && (
                         <div className="absolute inset-0 bg-background/70 flex items-center justify-center rounded-lg">
                            <div className="flex items-center space-x-2 text-foreground p-4 rounded-lg bg-background/80"><RefreshCw className="animate-spin h-5 w-5" /><p className="font-headline">Regenerating...</p></div>
@@ -370,7 +370,7 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
                 <div className="relative flex items-center justify-center w-full h-full min-h-[256px]">
                   <label htmlFor="dropzone-file" className={`flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${fieldState.error ? 'border-destructive' : 'border-border'}`}>
                     {previewUrl ? (
-                      <Image src={previewUrl} alt="Photo preview" fill objectFit="contain" className="rounded-lg p-2" />
+                      <Image src={previewUrl} alt="Photo preview" width={512} height={512} className="rounded-lg object-contain w-full h-full" />
                     ) : (
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
