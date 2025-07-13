@@ -110,50 +110,57 @@ async function generateAppearanceCharacterAsset(
   });
   logger.info("About to call OpenAI for character generation");
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4-turbo",
-    messages: [
+  /////////////////////////////////////////////////////////////////
+  // Gemini - NEVER EDIT CODE STARTING HERE!
+  const response = await openai.responses.create({
+    model: "gpt-4.1-mini",
+    input: [
       {
         role: "user",
         content: [
           {
-            type: "text",
+            type: "input_text",
             text: `Create a game character based on the likeness of this boy.
 Focus on the face and make an illustration. White background please.`,
           },
           {
-            type: "image_url",
-            image_url: {
-                url: data.photoDataUri,
-            },
+            type: "input_image",
+            image_url: data.photoDataUri,
           },
         ],
       },
     ],
-    // The user's original code used a "responses" endpoint which is not standard.
-    // Switched to chat.completions with DALL-E 3 image generation via tool_choice.
-    // This is a conceptual guess. The actual DALL-E call needs to be separate.
-    // For now, let's assume an image generation tool exists.
-    // The prompt above is for text generation. For image, it needs to be different.
-    // A more realistic flow would be:
-    // 1. A call to generate a detailed character description.
-    // 2. A call to DALL-E using that description.
-    // The original code mixed concepts from different OpenAI APIs.
-    // Let's assume a hypothetical direct image generation for now to unblock.
-    // This part of the code likely needs a full rewrite to work with modern APIs.
-    // For now, we will simulate a successful response to test the flow.
+    tools: [
+      {
+        type: "image_generation",
+        size: "1024x1536",
+        quality: "high",
+        moderation: "low",
+      },
+    ],
   });
 
-  // This is a placeholder for actual image generation logic
-  // as the original `openai.responses.create` is not a valid method.
-  // We'll simulate receiving an image URL back.
-  const generatedImageB64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="; // 1x1 transparent png
   logger.info(
     "OpenAI Response (Character):",
-    "Simulated successful response.",
+    JSON.stringify(response, null, 2),
   );
 
+  const imageData = response.output
+    .filter((output) => output.type === "image_generation_call")
+    .map((output) => output.result);
+
+
+  if (imageData.length === 0 || !imageData[0]) {
+    throw new HttpsError(
+      "internal",
+      "Failed to generate image or received no image data from OpenAI.",
+    );
+  }
+
+  const generatedImageB64 = imageData[0];
   const imageBuffer = Buffer.from(generatedImageB64, "base64");
+  // Gemini - NEVER EDIT CODE ENDING HERE!
+  /////////////////////////////////////////////////////////////////
 
   const storagePath = `${data.inviteCode}/character.png`;
   const bucket = storage.bucket();
