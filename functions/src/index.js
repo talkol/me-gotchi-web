@@ -109,7 +109,7 @@ async function savePreferences(inviteCode, preferences) {
  * @returns {Promise<{assetUrl: string}>} - A promise resolving with the public URL of the generated character asset.
  * @throws {HttpsError} - Throws HttpsError on validation, OpenAI, or storage errors.
  */
-export const generateAppearanceCharactersAsset = onCall({timeoutSeconds: 300}, async (request) => {
+export const generateAssetAppearanceCharacter = onCall({timeoutSeconds: 300}, async (request) => {
   if (!request.data.photoDataUri) {
     throw new HttpsError(
       "invalid-argument",
@@ -207,7 +207,7 @@ export const generateAppearanceCharactersAsset = onCall({timeoutSeconds: 300}, a
     // Save preferences on every call
     await savePreferences(data.inviteCode, data);
     return { assetUrl: finalUrl }; // Return the URL of the generated expressions asset
-  } catch (error) {
+  } catch (error) { 
     logger.error(`Error in generateAppearanceCharacterAsset:`, error);
     if (error instanceof HttpsError) {
       throw error;
@@ -231,7 +231,7 @@ export const generateAppearanceCharactersAsset = onCall({timeoutSeconds: 300}, a
  * @returns {Promise<{message: string}>} - A placeholder promise.
  * @throws {HttpsError} - Throws HttpsError on validation errors.
  */
-export const generateAppearanceExpressionsAsset = onCall({timeoutSeconds: 300}, async (request) => {
+export const generateAssetAppearanceExpressions = onCall({timeoutSeconds: 300}, async (request) => {
   if (!request.data.characterImageUrl) {
     throw new HttpsError(
       "invalid-argument",
@@ -330,7 +330,7 @@ export const generateAppearanceExpressionsAsset = onCall({timeoutSeconds: 300}, 
     // Save preferences on every call
     await savePreferences(data.inviteCode, data);
     return { assetUrl: finalUrl }; // Return the URL of the generated expressions asset
-  } catch (error) {
+  } catch (error) { 
     logger.error(`Error in generateAppearanceExpressionsAsset:`, error);
     if (error instanceof HttpsError) {
       throw error;

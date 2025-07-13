@@ -643,7 +643,8 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     
     try {
         const functionsInstance = getFunctions(app, 'us-central1');
-        const generateAsset = httpsCallable(functionsInstance, 'generateAssetAppearanceCharacter', { timeout: 300000 });
+        // Default to character generation function, update below if generationType is expressions
+        let generateFunction = httpsCallable(functionsInstance, 'generateAssetAppearanceCharacter', { timeout: 300000 });
         const currentValues = getValues();
         
         let photoDataUri: string | undefined;
@@ -651,13 +652,23 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
             photoDataUri = await fileToDataURI(currentValues.photo);
         }
 
-        const payload = {
+        let payload: any = {
             ...currentValues,
             generationType,
             photoDataUri,
         };
+        
+        // If generating expressions, use the expressions function and pass the character image URL
+        if (generationType === 'expressions') {
+             generateFunction = httpsCallable(functionsInstance, 'generateAssetAppearanceExpressions', { timeout: 300000 });
+             if (!imageUrls.character) {
+                  throw new Error("Character image is required to generate expressions.");
+             }
+             // Add the character image URL to the payload
+             payload.characterImageUrl = imageUrls.character;
+        }
 
-        const result = await generateAsset(payload) as { data: { assetUrl: string } };
+        const result = await generateFunction(payload) as { data: { assetUrl: string } };
         
         setLastResult({
             status: 'success',
