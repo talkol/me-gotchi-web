@@ -556,7 +556,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         }
       } catch (error) {
         // This might happen on network errors, but we don't want to block the user.
-        console.error("Could not fetch preferences.json, starting with a fresh form:", error);
+        console.warn("Could not fetch preferences.json, starting with a fresh form:", error);
       }
 
       // Check for existing character asset
@@ -568,7 +568,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
           setImageUrls(prev => ({ ...prev, character: publicUrl }));
         }
       } catch (error) {
-        console.error("Error checking for existing character asset:", error);
+        console.warn("Error checking for existing character asset:", error);
       }
     };
     fetchExistingData();
