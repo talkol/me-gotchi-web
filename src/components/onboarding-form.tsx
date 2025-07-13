@@ -605,7 +605,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     
     try {
         const functionsInstance = getFunctions(app, 'us-central1');
-        const generateAsset = httpsCallable(functionsInstance, 'generateAssetAppearanceCharacter');
+        const generateAsset = httpsCallable(functionsInstance, 'generateAssetAppearanceCharacter', { timeout: 300000 });
         const currentValues = getValues();
         
         let photoDataUri: string | undefined;
