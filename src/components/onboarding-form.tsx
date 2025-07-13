@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { isFirebaseEnabled, getFunctions, httpsCallable, type FunctionsError } from "@/lib/firebase";
+import { functions as firebaseFunctions, isFirebaseEnabled } from "@/lib/firebase";
+import { getFunctions, httpsCallable, type HttpsCallableError } from "firebase/functions";
 
 
 import { Button } from "@/components/ui/button";
@@ -612,7 +613,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     setActiveGeneration(generationType);
     
     try {
-        const generateAsset = httpsCallable(getFunctions(), 'generateAsset');
+        const generateAsset = httpsCallable(getFunctions(), 'generateAssetAppearanceCharacter');
         const currentValues = getValues();
         
         let photoDataUri: string | undefined;
@@ -639,7 +640,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
     } catch (error) {
         console.error("Firebase function call failed:", error);
-        const functionsError = error as FunctionsError;
+        const functionsError = error as HttpsCallableError;
         setLastResult({
             status: 'error',
             message: functionsError.message || 'An unknown error occurred.',
@@ -745,3 +746,5 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     </div>
   );
 }
+
+    

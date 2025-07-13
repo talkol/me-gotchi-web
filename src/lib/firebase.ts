@@ -1,7 +1,7 @@
 
 import { initializeApp, getApps, type FirebaseApp, type FirebaseOptions } from "firebase/app";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
-import { getFunctions, httpsCallable, type Functions, type FunctionsError } from "firebase/functions";
+import { getFunctions, type Functions } from "firebase/functions";
 
 // This configuration is for the CLIENT-SIDE app and will be bundled.
 // It uses the NEXT_PUBLIC_ variables from your .env.local file.
@@ -14,9 +14,9 @@ const firebaseConfig: FirebaseOptions = {
       appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     };
 
-let app: FirebaseApp | null = null;
-let storage: FirebaseStorage | null = null;
-let functions: Functions | null = null;
+let app: FirebaseApp;
+let storage: FirebaseStorage;
+let functions: Functions;
 let isFirebaseEnabled = false;
 
 // Check that all required config values are present
@@ -40,4 +40,6 @@ if (
      console.warn("Firebase is not configured correctly. One or more required environment variables are missing from .env.local. All Firebase-dependent features will be disabled. Please provide your configuration to enable Firebase.");
 }
 
-export { app, storage, getFunctions, httpsCallable, type FunctionsError, isFirebaseEnabled };
+export { functions, isFirebaseEnabled };
+
+    
