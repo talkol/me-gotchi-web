@@ -656,7 +656,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
           const hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
           const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle', message: '' };
           
-          const dependenciesMet = gen.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
+          const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
           const isLocked = !dependenciesMet;
 
           return (
