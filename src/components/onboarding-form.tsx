@@ -506,8 +506,6 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => (
 export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
-  const [characterAssetExists, setCharacterAssetExists] = useState(false);
-  const [existingCharacterImageUrl, setExistingCharacterImageUrl] = useState<string | null>(null);
   
   const [imageUrls, setImageUrls] = useState<StepImageUrls>({});
   const [activeGeneration, setActiveGeneration] = useState<string | null>(null);
@@ -518,13 +516,8 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     resolver: zodResolver(OnboardingFormSchema),
     mode: "onTouched",
     defaultValues: {
-      firstName: "",
-      gender: undefined,
-      age: undefined,
-      photo: undefined,
       inviteCode: inviteCode,
       step: 1,
-      imageUrl: "",
       imageUrls: {},
       likedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
       dislikedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
@@ -538,26 +531,46 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     },
   });
 
-  // Effect to check for existing character asset on mount
+  const { control, handleSubmit, watch, setError, setValue, trigger, getValues, reset } = form;
+
+  // Effect to check for existing preferences and assets on mount
   useEffect(() => {
-    const checkExistingAsset = async () => {
+    const fetchExistingData = async () => {
+      // Fetch preferences
+      const prefsUrl = `https://storage.googleapis.com/me-gotchi.appspot.com/${encodeURIComponent(inviteCode)}/preferences.json`;
+      try {
+        const response = await fetch(prefsUrl);
+        if (response.ok) {
+          const prefsData = await response.json();
+          // Use reset to update all form values
+          reset(currentValues => ({
+              ...currentValues, // Keep default structure
+              ...prefsData, // Overwrite with fetched data
+              inviteCode: currentValues.inviteCode, // Ensure inviteCode isn't overwritten
+              step: currentValues.step, // Keep current step
+          }));
+          console.log("Successfully loaded and pre-populated form from preferences.json");
+        } else {
+          console.log("No existing preferences.json found, starting with a fresh form.");
+        }
+      } catch (error) {
+        console.error("Error fetching or parsing preferences.json:", error);
+      }
+
+      // Check for existing character asset
       const filePath = `${inviteCode}/character.png`;
-      const publicUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(filePath)}`;
+      const publicUrl = `https://storage.googleapis.com/me-gotchi.appspot.com/${encodeURIComponent(filePath)}`;
       try {
         const response = await fetch(publicUrl, { method: 'HEAD' });
         if (response.ok) {
-          setExistingCharacterImageUrl(publicUrl);
-          setCharacterAssetExists(true);
-          setImageUrls(prev => ({ ...prev, character: publicUrl })); // Update imageUrls state
+          setImageUrls(prev => ({ ...prev, character: publicUrl }));
         }
       } catch (error) {
         console.error("Error checking for existing character asset:", error);
       }
     };
-    checkExistingAsset();
-  }, [inviteCode]); // Run only on component mount and inviteCode change
-
-  const { control, handleSubmit, watch, setError, setValue, trigger, getValues } = form;
+    fetchExistingData();
+  }, [inviteCode, reset]);
 
   useEffect(() => {
     setValue('step', currentStep, { shouldValidate: true });
@@ -635,11 +648,9 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         }
 
         const payload = {
+            ...currentValues,
             generationType,
-            inviteCode: currentValues.inviteCode,
             photoDataUri,
-            imageUrls: imageUrls,
-            // We can add more form data to the payload here as needed
         };
 
         const result = await generateAsset(payload) as { data: { assetUrl: string } };
@@ -674,7 +685,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       return config.generations.map(genConfig => {
           const genType = genConfig.generationType;
           const isGenerating = activeGeneration === genType;
-          const hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey] || (genType === 'character' && characterAssetExists); // Check existing asset for character
+          const hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
           const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle' as const, message: '' };
           
           const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
@@ -685,7 +696,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               key={genType}
               title={genConfig.title}
               generationType={genType}
-              imageUrl={genType === 'character' && existingCharacterImageUrl && !imageUrls[genConfig.imageUrlKey] ? existingCharacterImageUrl : imageUrls[genConfig.imageUrlKey]} // Use existing character image if available and not yet generated in this session
+              imageUrl={imageUrls[genConfig.imageUrlKey]}
               state={resultForThisUnit}
               isGenerating={isGenerating}
               hasBeenGenerated={hasBeenGenerated}
