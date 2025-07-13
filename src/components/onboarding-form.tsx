@@ -345,14 +345,15 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
              <FormField control={control} name="gender" render={({ field }) => (
                 <FormItem>
                     <FormLabel className="text-base font-semibold">Gender</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="male">Male</SelectItem>
                             <SelectItem value="female">Female</SelectItem>
                         </SelectContent>
                     </Select>
-                    <FormMessage />
+                   
+                     <FormMessage />
                 </FormItem>
             )} />
               <FormField control={control} name="age" render={({ field }) => (
@@ -547,6 +548,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               ...currentValues, // Keep default structure
               ...prefsData, // Overwrite with fetched data
               inviteCode: currentValues.inviteCode, // Ensure inviteCode isn't overwritten
+              gender: prefsData.gender, // Explicitly set gender
               step: currentValues.step, // Keep current step
           }));
           console.log("Successfully loaded and pre-populated form from preferences.json");
