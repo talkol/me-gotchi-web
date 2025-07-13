@@ -14,37 +14,18 @@ const firebaseConfig: FirebaseOptions = {
       appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
     };
 
-let app: FirebaseApp;
 let storage: FirebaseStorage;
 let functions: Functions;
-
-// Check that all required config values are present. If not, warn the developer.
-if (
-    !firebaseConfig.apiKey ||
-    !firebaseConfig.authDomain ||
-    !firebaseConfig.projectId ||
-    !firebaseConfig.storageBucket ||
-    !firebaseConfig.messagingSenderId ||
-    !firebaseConfig.appId
-) {
-    console.warn("Firebase is not configured correctly. One or more required environment variables are missing from .env.local. All Firebase-dependent features will be disabled. Please provide your configuration to enable Firebase.");
-}
+let app: FirebaseApp;
 
 // Initialize Firebase. If this fails, it will now throw an error.
-app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+} else {
+    app = getApps()[0];
+}
+
 storage = getStorage(app);
 functions = getFunctions(app);
 
-// isFirebaseEnabled is now determined by whether the config exists.
-// The app will crash if initialization fails, which is what we want for debugging.
-const isFirebaseEnabled = !!(
-    firebaseConfig.apiKey &&
-    firebaseConfig.authDomain &&
-    firebaseConfig.projectId &&
-    firebaseConfig.storageBucket &&
-    firebaseConfig.messagingSenderId &&
-    firebaseConfig.appId
-);
-
-
-export { app, functions, isFirebaseEnabled };
+export { functions, storage };
