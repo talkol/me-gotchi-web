@@ -631,11 +631,13 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         });
 
     } catch (error) {
-        console.error("Firebase function call failed:", error);
+        console.error("Full Firebase function call error:", error);
         const functionsError = error as HttpsCallableError;
+        const errorMessage = `Code: ${functionsError.code}. Message: ${functionsError.message}. Details: ${JSON.stringify(functionsError.details)}`;
+        
         setLastResult({
             status: 'error',
-            message: functionsError.message || 'An unknown error occurred.',
+            message: errorMessage,
             generationType: generationType,
         });
     }
@@ -738,5 +740,3 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     </div>
   );
 }
-
-    
