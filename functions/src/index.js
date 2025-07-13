@@ -1,6 +1,8 @@
 
 import {initializeApp} from "firebase-admin/app";
 import {getStorage} from "firebase-admin/storage";
+// Import defineString for parameter access
+import {defineString} from 'firebase-functions/params';
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import OpenAI from "openai";
@@ -10,9 +12,6 @@ import {z} from "zod";
 initializeApp();
 const storage = getStorage();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 // Define a Zod schema for input validation
 const GenerationRequestSchema = z.object({
@@ -23,11 +22,8 @@ const GenerationRequestSchema = z.object({
   // We can add other fields from the form as needed
 });
 
-type OnboardingData = z.infer<typeof GenerationRequestSchema>;
-
 async function generateAppearanceCharacterAsset(
-  data: OnboardingData,
-): Promise<{assetUrl: string}> {
+  data) {
   if (!data.photoDataUri) {
     throw new HttpsError(
       "invalid-argument",
@@ -38,10 +34,20 @@ async function generateAppearanceCharacterAsset(
     throw new HttpsError("invalid-argument", "Invite code is required.");
   }
 
+  // Define the OpenAI API key parameter
+  const openAiApiKey = defineString('OPENAI_API_KEY');
+  if (!openAiApiKey.value()) {
+    throw new HttpsError('internal', 'OpenAI API key is not set.');
+  }
+
+  // Initialize OpenAI client with the defined parameter value
+  const openai = new OpenAI({
+    apiKey: openAiApiKey.value(),
+  });
   logger.info("About to call OpenAI for character generation");
 
   const response = await openai.responses.create({
-    model: "gpt-4o",
+    model: "gpt-4.1-mini",
     input: [
       {
         role: "user",
@@ -75,7 +81,6 @@ Focus on the face and make an illustration. White background please.`,
 
   const imageData = response.output
     .filter(
-      (output): output is OpenAI.ImageGenerationCall =>
         output.type === "image_generation_call",
     )
     .map((output) => output.result);
@@ -105,13 +110,12 @@ Focus on the face and make an illustration. White background please.`,
     expires: "03-09-2491", // Far-future expiration date
   });
 
-
+  logger.info("finalUrl: ", finalUrl);
   return {assetUrl: finalUrl};
 }
 
 
-export const generateAsset = onCall(async (request) => {
-  // Validate data with Zod
+export const generateAssetAppearanceCharacter = onCall({timeoutSeconds: 300}, async (request) => {
   const validationResult = GenerationRequestSchema.safeParse(request.data);
   if (!validationResult.success) {
     throw new HttpsError(
@@ -122,28 +126,13 @@ export const generateAsset = onCall(async (request) => {
   }
 
   const data = validationResult.data;
-  const {generationType} = data;
 
   try {
-    let result: {assetUrl: string};
+    let result;
 
-    switch (generationType) {
-      case "character":
-        result = await generateAppearanceCharacterAsset(data);
-        break;
-      // We will add more cases here for other generation types later
-      // case "expressions":
-      //   result = await generateAppearanceExpressionsAsset(data);
-      //   break;
-      default:
-        throw new HttpsError(
-          "invalid-argument",
-          "Invalid generation type provided.",
-        );
-    }
-    return result;
-  } catch (error) {
-    logger.error(`Error in generateAsset (Type: ${generationType}):`, error);
+    result = await generateAppearanceCharacterAsset(data);
+    return result;  } catch (error) {
+    logger.error(`Error in generateAsset (Type: character):`, error);
     if (error instanceof HttpsError) {
       throw error;
     }
