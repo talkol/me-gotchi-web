@@ -1,15 +1,17 @@
 "use client";
-
+import React from "react";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export default function OnboardingPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { inviteCode: string };
+  params: Promise<{ inviteCode: string }>;
 }) {
+  const params = React.use(paramsPromise);
+
   return (
     <main className="container mx-auto py-8 px-4">
       <div className="absolute top-4 left-4">
