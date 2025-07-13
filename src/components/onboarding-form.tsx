@@ -537,7 +537,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   useEffect(() => {
     const fetchExistingData = async () => {
       // Fetch preferences
-      const prefsUrl = `https://storage.googleapis.com/me-gotchi.appspot.com/${encodeURIComponent(inviteCode)}/preferences.json`;
+      const prefsUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(inviteCode)}/preferences.json`;
       try {
         const response = await fetch(prefsUrl);
         if (response.ok) {
@@ -561,7 +561,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
       // Check for existing character asset
       const filePath = `${inviteCode}/character.png`;
-      const publicUrl = `https://storage.googleapis.com/me-gotchi.appspot.com/${encodeURIComponent(filePath)}`;
+      const publicUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(filePath)}`;
       try {
         const response = await fetch(publicUrl, { method: 'HEAD' });
         if (response.ok) {
