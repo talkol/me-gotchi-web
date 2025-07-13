@@ -551,10 +551,12 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
           }));
           console.log("Successfully loaded and pre-populated form from preferences.json");
         } else {
+          // This is not an error, it just means the user is new.
           console.log("No existing preferences.json found, starting with a fresh form.");
         }
       } catch (error) {
-        console.error("Error fetching or parsing preferences.json:", error);
+        // This might happen on network errors, but we don't want to block the user.
+        console.error("Could not fetch preferences.json, starting with a fresh form:", error);
       }
 
       // Check for existing character asset
