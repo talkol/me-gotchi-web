@@ -368,9 +368,9 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
               <FormLabel className="text-base font-semibold">Face Photo</FormLabel>
               <FormControl>
                 <div className="relative flex items-center justify-center w-full h-full min-h-[256px]">
-                  <label htmlFor="dropzone-file" className={`flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${fieldState.error ? 'border-destructive' : 'border-border'}`}>
+                  <label htmlFor="dropzone-file" className={`relative flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${fieldState.error ? 'border-destructive' : 'border-border'}`}>
                     {previewUrl ? (
-                      <Image src={previewUrl} alt="Photo preview" width={512} height={512} className="rounded-lg object-contain w-full h-full" />
+                      <Image src={previewUrl} alt="Photo preview" width={512} height={512} className="absolute inset-0 w-full h-full object-contain rounded-lg p-2" />
                     ) : (
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
@@ -537,7 +537,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   useEffect(() => {
     const fetchExistingData = async () => {
       // Fetch preferences
-      const prefsUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(inviteCode)}/preferences.json`;
+      const prefsUrl = `https://storage.googleapis.com/me-gotchi.appspot.com/${encodeURIComponent(inviteCode)}/preferences.json`;
       try {
         const response = await fetch(prefsUrl);
         if (response.ok) {
