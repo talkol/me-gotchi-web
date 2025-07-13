@@ -1,9 +1,7 @@
 
 "use client";
 
-import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getFunctions } from "firebase/functions";
-import { setLogLevel } from "firebase/app";
+import { initializeApp, getApps, type FirebaseApp, setLogLevel } from "firebase/app";
 
 // This configuration is for the CLIENT-SIDE app and will be bundled.
 // It uses the NEXT_PUBLIC_ variables from your .env.local file.
