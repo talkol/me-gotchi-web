@@ -17,29 +17,34 @@ const firebaseConfig: FirebaseOptions = {
 let app: FirebaseApp;
 let storage: FirebaseStorage;
 let functions: Functions;
-let isFirebaseEnabled = false;
 
-// Check that all required config values are present
+// Check that all required config values are present. If not, warn the developer.
 if (
+    !firebaseConfig.apiKey ||
+    !firebaseConfig.authDomain ||
+    !firebaseConfig.projectId ||
+    !firebaseConfig.storageBucket ||
+    !firebaseConfig.messagingSenderId ||
+    !firebaseConfig.appId
+) {
+    console.warn("Firebase is not configured correctly. One or more required environment variables are missing from .env.local. All Firebase-dependent features will be disabled. Please provide your configuration to enable Firebase.");
+}
+
+// Initialize Firebase. If this fails, it will now throw an error.
+app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+storage = getStorage(app);
+functions = getFunctions(app);
+
+// isFirebaseEnabled is now determined by whether the config exists.
+// The app will crash if initialization fails, which is what we want for debugging.
+const isFirebaseEnabled = !!(
     firebaseConfig.apiKey &&
     firebaseConfig.authDomain &&
     firebaseConfig.projectId &&
     firebaseConfig.storageBucket &&
     firebaseConfig.messagingSenderId &&
     firebaseConfig.appId
-) {
-    try {
-        app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-        storage = getStorage(app);
-        functions = getFunctions(app);
-        isFirebaseEnabled = true;
-    } catch(e) {
-        console.error("Firebase initialization failed:", e);
-    }
-} else {
-     console.warn("Firebase is not configured correctly. One or more required environment variables are missing from .env.local. All Firebase-dependent features will be disabled. Please provide your configuration to enable Firebase.");
-}
+);
+
 
 export { functions, isFirebaseEnabled };
-
-    

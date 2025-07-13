@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { functions as firebaseFunctions, isFirebaseEnabled } from "@/lib/firebase";
+import { functions } from "@/lib/firebase";
 import { getFunctions, httpsCallable, type HttpsCallableError } from "firebase/functions";
 
 
@@ -588,15 +588,6 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   };
   
   const onGenerate = async (generationType: string) => {
-    if (!isFirebaseEnabled) {
-        toast({
-            variant: "destructive",
-            title: "Firebase Not Configured",
-            description: "Please configure Firebase to enable asset generation.",
-        });
-        return;
-    }
-
     const stepConfig = STEPS.find(s => s.id === currentStep);
     if (!stepConfig) return;
 
@@ -746,5 +737,3 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     </div>
   );
 }
-
-    
