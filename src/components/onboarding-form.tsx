@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
-import { initializeApp, getApps } from "firebase/app";
+import { app } from "@/lib/firebase";
 import { getFunctions, httpsCallable, type HttpsCallableError } from "firebase/functions";
 
 
@@ -604,16 +604,6 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     setActiveGeneration(generationType);
     
     try {
-        const firebaseConfig = {
-          apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-          authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-          projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-          storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-          messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-          appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-        };
-
-        const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
         const functionsInstance = getFunctions(app, 'us-central1');
         const generateAsset = httpsCallable(functionsInstance, 'generateAssetAppearanceCharacter', { timeout: 300000 });
         const currentValues = getValues();
@@ -666,7 +656,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
           const hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
           const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle', message: '' };
           
-          const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
+          const dependenciesMet = gen.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
           const isLocked = !dependenciesMet;
 
           return (

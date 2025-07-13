@@ -1,3 +1,5 @@
+"use client";
+
 import { OnboardingForm } from "@/components/onboarding-form";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
