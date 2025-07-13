@@ -79,7 +79,7 @@ Focus on the face and make an illustration. White background please.`,
     JSON.stringify(response, null, 2),
   );
 
-  const imageData = response.tool_outputs
+  const imageData = response.output
     .filter((output) => output.type === "image_generation_call")
     .map((output) => output.result);
 
@@ -104,10 +104,8 @@ Focus on the face and make an illustration. White background please.`,
     },
   });
 
-  const [finalUrl] = await file.getSignedUrl({
-    action: "read",
-    expires: "03-09-2491", // Far-future expiration date
-  });
+  await file.makePublic();
+  const finalUrl = file.publicUrl();
 
   logger.info("finalUrl: ", finalUrl);
   return {assetUrl: finalUrl};

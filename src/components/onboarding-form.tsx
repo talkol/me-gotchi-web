@@ -506,6 +506,8 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => (
 export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
+  const [characterAssetExists, setCharacterAssetExists] = useState(false);
+  const [existingCharacterImageUrl, setExistingCharacterImageUrl] = useState<string | null>(null);
   
   const [imageUrls, setImageUrls] = useState<StepImageUrls>({});
   const [activeGeneration, setActiveGeneration] = useState<string | null>(null);
@@ -535,6 +537,25 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       environments: [...Array(4)].map(() => ({ explanation: "" })),
     },
   });
+
+  // Effect to check for existing character asset on mount
+  useEffect(() => {
+    const checkExistingAsset = async () => {
+      const filePath = `${inviteCode}/character.png`;
+      const publicUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(filePath)}`;
+      try {
+        const response = await fetch(publicUrl, { method: 'HEAD' });
+        if (response.ok) {
+          setExistingCharacterImageUrl(publicUrl);
+          setCharacterAssetExists(true);
+          setImageUrls(prev => ({ ...prev, character: publicUrl })); // Update imageUrls state
+        }
+      } catch (error) {
+        console.error("Error checking for existing character asset:", error);
+      }
+    };
+    checkExistingAsset();
+  }, [inviteCode]); // Run only on component mount and inviteCode change
 
   const { control, handleSubmit, watch, setError, setValue, trigger, getValues } = form;
 
@@ -653,8 +674,8 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       return config.generations.map(genConfig => {
           const genType = genConfig.generationType;
           const isGenerating = activeGeneration === genType;
-          const hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
-          const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle', message: '' };
+          const hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey] || (genType === 'character' && characterAssetExists); // Check existing asset for character
+          const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle' as const, message: '' };
           
           const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
           const isLocked = !dependenciesMet;
@@ -664,7 +685,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               key={genType}
               title={genConfig.title}
               generationType={genType}
-              imageUrl={imageUrls[genConfig.imageUrlKey]}
+              imageUrl={genType === 'character' && existingCharacterImageUrl && !imageUrls[genConfig.imageUrlKey] ? existingCharacterImageUrl : imageUrls[genConfig.imageUrlKey]} // Use existing character image if available and not yet generated in this session
               state={resultForThisUnit}
               isGenerating={isGenerating}
               hasBeenGenerated={hasBeenGenerated}
