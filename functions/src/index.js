@@ -79,7 +79,7 @@ Focus on the face and make an illustration. White background please.`,
     JSON.stringify(response, null, 2),
   );
 
-  const imageData = response.output
+  const imageData = response.tool_outputs
     .filter((output) => output.type === "image_generation_call")
     .map((output) => output.result);
 
