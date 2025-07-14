@@ -5,13 +5,13 @@ import {z} from "zod";
 export const FoodItemSchema = z.object({
     name: z.string().max(11),
     addExplanation: z.boolean(),
-    explanation: z.string(),
+    explanation: z.string().optional(),
   });
   
 export const ActivityItemSchema = z.object({
     name: z.string().max(11),
     addExplanation: z.boolean(),
-    explanation: z.string(),
+    explanation: z.string().optional(),
   });
   
 export const EnvironmentItemSchema = z.object({

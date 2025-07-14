@@ -77,10 +77,6 @@ export const generateAssetAppearanceExpressionsImp = onCall({timeoutSeconds: 300
         },
       ],
     });
-    logger.info(
-      "OpenAI Response (Expressions):",
-      JSON.stringify(response, null, 2),
-    );
   
     const imageData = response.output
       .filter((output) => output.type === "image_generation_call")
@@ -117,7 +113,7 @@ export const generateAssetAppearanceExpressionsImp = onCall({timeoutSeconds: 300
       await savePreferences(data.inviteCode, data);
       return { assetUrl: finalUrl }; // Return the URL of the generated expressions asset
     } catch (error) { 
-      logger.error(`Error in generateAppearanceExpressionsAsset:`, error);
+      logger.error(`Error when saving preferences:`, error);
       if (error instanceof HttpsError) {
         throw error;
       }

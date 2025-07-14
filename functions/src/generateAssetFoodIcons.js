@@ -1,9 +1,17 @@
 import {defineString} from 'firebase-functions/params';
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import OpenAI from "openai";
-import {GenerationRequestSchema} from "./shared.js";
+import {GenerationRequestSchema,FoodItemSchema} from "./shared.js";
 import { getStorage } from "firebase-admin/storage";
 import * as logger from "firebase-functions/logger";
+
+function item(foodItem) {
+  if (foodItem.addExplanation && foodItem.explanation) {
+    return foodItem.explanation;
+  } else {
+    return foodItem.name;
+  }
+}
 
 /**
  * Generates a character asset using OpenAI based on a provided photo.
@@ -13,15 +21,32 @@ import * as logger from "firebase-functions/logger";
  *
  * @param {object} data - The data payload from the client, validated by GenerationRequestSchema.
  * @param {string} data.inviteCode - The user's invite code.
- * @param {string} data.photoDataUri - The base64 data URI of the user's photo.
  * @returns {Promise<{assetUrl: string}>} - A promise resolving with the public URL of the generated character asset.
  * @throws {HttpsError} - Throws HttpsError on validation, OpenAI, or storage errors.
  */
-export const generateAssetAppearanceCharacterImp = onCall({timeoutSeconds: 300}, async (request) => {
-    if (!request.data.photoDataUri) {
+export const generateAssetFoodIconsImp = onCall({timeoutSeconds: 300}, async (request) => {
+    if (!request.data.likedFoods || request.data.likedFoods.length != 3) {
       throw new HttpsError(
         "invalid-argument",
-        "A photo is required to generate the character asset.",
+        "likedFoods of len 3 is required to generate the food icons asset.",
+      );
+    }
+    if (!request.data.dislikedFoods || request.data.dislikedFoods.length != 3) {
+      throw new HttpsError(
+        "invalid-argument",
+        "dislikedFoods of len 3 is required to generate the food icons asset.",
+      );
+    }
+    if (!request.data.likedDrinks || request.data.likedDrinks.length != 2) {
+      throw new HttpsError(
+        "invalid-argument",
+        "likedDrinks of len 2 is required to generate the food icons asset.",
+      );
+    }
+    if (!request.data.dislikedDrinks || request.data.dislikedDrinks.length != 1) {
+      throw new HttpsError(
+        "invalid-argument",
+        "dislikedDrinks of len 1 is required to generate the food icons asset.",
       );
     }
     if (!request.data.inviteCode) {
@@ -51,18 +76,14 @@ export const generateAssetAppearanceCharacterImp = onCall({timeoutSeconds: 300},
   
     // Gemini - NEVER EDIT CODE STARTING HERE!
     const response = await openai.responses.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-4o",
       input: [
         {
           role: "user",
           content: [
             {
               type: "input_text",
-              text: `Create a game character based on the likeness of this photo. Focus on the face and make an illustration. White background please.`,
-            },
-            {
-              type: "input_image",
-              image_url: data.photoDataUri,
+              text: `Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put an illustration for a game asset in the art style of Super Mario. Top row: ${item(data.likedFoods[0])}; ${item(data.likedFoods[1])}; ${item(data.likedFoods[2])}. Middle row: ${item(data.dislikedFoods[0])}; ${item(data.dislikedFoods[1])}; ${item(data.dislikedFoods[2])}. Bottom row: ${item(data.likedDrinks[0])}; ${item(data.likedDrinks[1])}; ${item(data.dislikedDrinks[0])}.`,
             },
           ],
         },
@@ -70,9 +91,10 @@ export const generateAssetAppearanceCharacterImp = onCall({timeoutSeconds: 300},
       tools: [
         {
           type: "image_generation",
-          size: "1024x1536",
+          size: "1024x1024",
           quality: "high",
           moderation: "low",
+          background: "transparent",
         },
       ],
     });
@@ -93,7 +115,7 @@ export const generateAssetAppearanceCharacterImp = onCall({timeoutSeconds: 300},
     const imageBuffer = Buffer.from(generatedImageB64, "base64");
     // Gemini - NEVER EDIT CODE ENDING HERE!
     
-    const storagePath = `${data.inviteCode}/character.png`;
+    const storagePath = `${data.inviteCode}/food-atlas.png`;
     const bucket = getStorage().bucket();
     const file = bucket.file(storagePath);
   
