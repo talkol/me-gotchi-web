@@ -186,26 +186,26 @@ const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: 
 
 
     const AssetDisplay = useMemo(() => {
-        if (showPreviousImageWhileLoading || finalImageUrl) {
-             return (
+        if (finalImageUrl) {
+            return (
                 <div className="relative w-full h-full">
-                    <Image src={finalImageUrl!} alt="Generated Me-Gotchi Asset" width={512} height={512} className="rounded-lg object-contain w-full h-full" />
-                    {showPreviousImageWhileLoading && (
+ <Image src={finalImageUrl} alt="Generated Me-Gotchi Asset" width={512} height={512} className="rounded-lg object-contain w-full h-full" />
+                    {isGenerating && (
                         <div className="absolute inset-0 bg-background/70 flex items-center justify-center rounded-lg">
                            <div className="flex items-center space-x-2 text-foreground p-4 rounded-lg bg-background/80"><RefreshCw className="animate-spin h-5 w-5" /><p className="font-headline">Regenerating...</p></div>
                         </div>
                     )}
                 </div>
             );
-        }
-        if (showLoading) {
+        } else if (isGenerating) {
             return <div className="w-full h-full flex flex-col items-center justify-center space-y-4 p-8 bg-accent/30 rounded-lg"><Skeleton className="h-full w-full rounded-lg" /><div className="flex items-center space-x-2 text-foreground"><RefreshCw className="animate-spin h-5 w-5" /><p className="font-headline">AI is creating magic...</p></div></div>;
+        } else if (status === 'error') {
+ return <div className="w-full h-full flex flex-col items-center justify-center text-destructive p-4"><AlertCircle className="h-16 w-16" /><p className="mt-4 font-semibold text-center">{message}</p></div>;
+        } else {
+            // Empty state
+            return <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4"><Sparkles className="h-16 w-16" /><p className="mt-4 font-semibold text-center">Your generated asset will appear here</p></div>;
         }
-        if (status === 'error') {
-            return <div className="w-full h-full flex flex-col items-center justify-center text-destructive p-4"><AlertCircle className="h-16 w-16" /><p className="mt-4 font-semibold text-center">{message}</p></div>
-        }
-        return <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-4"><Sparkles className="h-16 w-16" /><p className="mt-4 font-semibold text-center">Your generated asset will appear here</p></div>;
-    }, [finalImageUrl, isGenerating, status, message, showPreviousImageWhileLoading, showLoading]);
+    }, [finalImageUrl, isGenerating, status, message]);
 
     return (
         <div className="w-full mx-auto aspect-square bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden">
@@ -273,7 +273,7 @@ const PreferenceItem = ({
         name={`${name}.${index}.name`}
         render={({ field }) => (
           <FormItem>
-            <FormControl>
+            <FormControl style={{ textTransform: 'uppercase' }}>
               <Input {...field} placeholder={placeholderName} className="text-base" />
             </FormControl>
             <FormMessage />
@@ -750,7 +750,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               key={genType}
               title={genConfig.title}
               generationType={genType}
-              imageUrl={`${genType === 'expressions' && imageUrls.faceAtlas ? imageUrls.faceAtlas : imageUrls[genConfig.imageUrlKey]}`}
+              imageUrl={genType === 'expressions' && imageUrls.faceAtlas ? imageUrls.faceAtlas : imageUrls[genConfig.imageUrlKey]}
               state={resultForThisUnit}
               isGenerating={isGenerating}
               hasBeenGenerated={hasBeenGenerated}
