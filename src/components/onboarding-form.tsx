@@ -140,7 +140,6 @@ const STEPS: StepConfig[] = [
   { id: 1, title: "Appearance", fields: ["firstName", "gender", "age", "photo"], generations: [
       { title: "Generate Character", generationType: "character", imageUrlKey: "character" },
       { title: "Generate Expressions", generationType: "expressions", imageUrlKey: "expressions", dependencies: ["character"]},
-      { title: "Remove Background", generationType: "removeBg", imageUrlKey: "removeBg", dependencies: ["character"]},
   ] },
   { id: 2, title: "Food Preferences", fields: ["likedFoods", "dislikedFoods", "likedDrinks", "dislikedDrinks"], generations: [
       { title: "Generate Icons", generationType: "foodIcons", imageUrlKey: "foodIcons", dependencies: ["character"] },
@@ -572,6 +571,19 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       } catch (error) {
         console.warn("Error checking for existing character asset:", error);
       }
+
+      // Check for existing face atlas asset
+      const faceAtlasFilePath = `${inviteCode}/face-atlas.png`;
+      const faceAtlasPublicUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(faceAtlasFilePath)}`;
+      try {
+        const response = await fetch(faceAtlasPublicUrl, { method: 'HEAD' });
+        if (response.ok) {
+          setImageUrls(prev => ({ ...prev, faceAtlas: faceAtlasPublicUrl }));
+        }
+      } catch (error) {
+        console.warn("Error checking for existing face atlas asset:", error);
+      }
+
     };
     fetchExistingData();
   }, [inviteCode, reset]);
@@ -599,7 +611,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
        const generationType = lastResult.generationType as keyof StepImageUrls;
 
        setImageUrls(prev => ({...prev, [generationType]: lastResult.imageUrl!}));
-       
+
        if (generationType === 'character') {
          setValue("imageUrl", lastResult.imageUrl);
        }
@@ -691,7 +703,14 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   }
   
   const stepConfig = STEPS.find(s => s.id === currentStep);
-  const isStepComplete = stepConfig?.generations.every(g => !!imageUrls[g.imageUrlKey as keyof StepImageUrls]) ?? false;
+  const isStepComplete = useMemo(() => {
+      if (!stepConfig) return false;
+      if (currentStep === 1) {
+          // For step 1, consider complete if either character or faceAtlas is generated
+          return !!imageUrls.character || !!imageUrls.faceAtlas;
+      }
+      return stepConfig.generations.every(g => !!imageUrls[g.imageUrlKey as keyof StepImageUrls]);
+  }, [currentStep, stepConfig, imageUrls]);
   
   const renderGenerationUnits = (step: number) => {
       const config = STEPS.find(s => s.id === step);
@@ -700,7 +719,13 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       return config.generations.map(genConfig => {
           const genType = genConfig.generationType;
           const isGenerating = activeGeneration === genType;
-          const hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
+          let hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
+          // Special case for expressions generation in Step 1:
+          // It's considered "generated" if the faceAtlas exists, even ifimageUrlKey is 'expressions'
+          if (step === 1 && genType === 'expressions') {
+              hasBeenGenerated = !!imageUrls.faceAtlas;
+          }
+
           const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle' as const, message: '' };
           
           const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
@@ -711,7 +736,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               key={genType}
               title={genConfig.title}
               generationType={genType}
-              imageUrl={imageUrls[genConfig.imageUrlKey]}
+ imageUrl={`${genType === 'expressions' && imageUrls.faceAtlas ? imageUrls.faceAtlas : imageUrls[genConfig.imageUrlKey]}?v=${new Date().getTime()}`}
               state={resultForThisUnit}
               isGenerating={isGenerating}
               hasBeenGenerated={hasBeenGenerated}

@@ -31,7 +31,8 @@ const EnvironmentItemSchema = z.object({
 const GenerationRequestSchema = z.object({
   generationType: z.string(),
   inviteCode: z.string().min(1),
-  photoDataUri: z.string().optional(),
+  photoDataUri: z.string().optional().nullable(),
+  characterImageUrl: z.string().optional().nullable(),
   imageUrls: z.record(z.string()).optional(),
   
   // All form fields to be saved in preferences.json
@@ -150,7 +151,7 @@ export const generateAssetAppearanceCharacter = onCall({timeoutSeconds: 300}, as
         content: [
           {
             type: "input_text",
-            text: `Create a game character based on the likeness of this boy. Focus on the face and make an illustration. White background please.`,
+            text: `Create a game character based on the likeness of this photo. Focus on the face and make an illustration. White background please.`,
           },
           {
             type: "input_image",
@@ -265,14 +266,14 @@ export const generateAssetAppearanceExpressions = onCall({timeoutSeconds: 300}, 
 
   // Gemini - NEVER EDIT CODE STARTING HERE!
   const response = await openai.responses.create({
-    model: "gpt-4.1-mini",
+    model: "gpt-4o",
     input: [
       {
         role: "user",
         content: [
           {
             type: "input_text",
-            text: `Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put this face of the character with a different varied facial expression. Top row: big happy smile mouth closed with eyes open; huge happy smile mouth closed with eyes open; huge laugh mouth open and eyes closed. Middle row: no smile with eyes looking top left; no smile with eyes looking straight; no smile with eyes looking bottom right. Bottom row: big sad frown with eyes open; huge angry frown with eyes open; huge frown crying with eyes closed and tears.`,
+            text: `Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put the face of the input character with a different varied facial expression. Top row: big happy smile, mouth closed, eyes open; bigger happier smile, mouth slightly open, eyes open; huge laugh, mouth open, eyes closed. Middle row: no smile, eyes looking top left; no smile, eyes looking straight; no smile, eyes looking bottom right. Bottom row: big sad frown, eyes open; huge angry frown, eyes open; huge frown crying, eyes closed and tears. Make sure all facial expressions are different. Do not put any separator lines between frames.`,
           },
           {
             type: "input_image",
