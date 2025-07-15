@@ -59,6 +59,7 @@ const OnboardingFormSchema = z.object({
   likedExerciseActivities: z.array(ActivityItemSchema).length(2),
   dislikedExerciseActivities: z.array(ActivityItemSchema).length(1),
   
+  environmentNumber: z.number().min(1).max(4).optional(),
   environments: z.array(EnvironmentItemSchema).length(4),
   
   inviteCode: z.string().min(1),
@@ -632,6 +633,23 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       } catch (error) {
         console.warn("Error checking for existing activities icons asset:", error);
       }
+
+      // Check for existing environment background assets
+      for (let i = 1; i <= 4; i++) {
+        const backgroundFilePath = `${inviteCode}/background${i}.jpg`;
+        const backgroundPublicUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(backgroundFilePath)}`;
+        const environmentKey = `environment${i}` as keyof StepImageUrls;
+        try {
+          const response = await fetch(backgroundPublicUrl, { method: 'HEAD' });
+          if (response.ok) {
+            setImageUrls(prev => ({ ...prev, [environmentKey]: backgroundPublicUrl }));
+          }
+        } catch (error) {
+          console.warn(`Error checking for existing environment ${i} asset:`, error);
+        }
+      }
+
+
     };
     fetchExistingData();
   }, [inviteCode, reset]);
@@ -761,6 +779,25 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
                 dislikedExerciseActivities: currentValues.dislikedExerciseActivities,
              }
         }
+        
+        // If generating environments, use the generateAssetEnvironment function
+        if (generationType.includes('environment')) {
+             generateFunction = httpsCallable(functionsInstance, 'generateAssetEnvironment', { timeout: 300000 });
+             if (!imageUrls.character) {
+                  throw new Error("Character image is required to generate environments.");
+             }
+             // Extract environment number from generationType (e.g., "environment1" -> 1)
+             const environmentNumber = parseInt(generationType.replace('environment', ''), 10);
+             if (isNaN(environmentNumber) || environmentNumber < 1 || environmentNumber > 4) {
+                 throw new Error(`Invalid environment generation type: ${generationType}`);
+             }
+             payload = {
+                inviteCode: currentValues.inviteCode,
+                characterImageUrl: imageUrls.character,
+                environments: currentValues.environments, // Pass the entire environments array
+                environmentNumber: environmentNumber,
+             }
+        }
 
 
         const result = await generateFunction(payload) as { data: { assetUrl: string } };
@@ -820,6 +857,10 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
            if (step === 3 && genType === 'activitiesIcons') {
             hasBeenGenerated = !!imageUrls.activitiesIcons;
           }
+           // Special case for environment generation in Step 4:
+           if (step === 4 && genType.includes('environment')) {
+             hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
+           }
 
 
           let currentImageUrl = (step === 1 && genType === 'expressions' && imageUrls.faceAtlas) ? imageUrls.faceAtlas :

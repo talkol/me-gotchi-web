@@ -66,7 +66,7 @@ export const generateAssetEnvironmentImp = onCall({timeoutSeconds: 300}, async (
       tools: [
         {
           type: "image_generation",
-          output_format: "JPEG",
+          output_format: "jpeg",
           size: "1536x1024",
           quality: "high",
           moderation: "low",
