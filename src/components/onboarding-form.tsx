@@ -723,6 +723,24 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
              }
         }
 
+        // If generating activities icons, use the activitiesIcons function
+        if (generationType === 'activitiesIcons') {
+             generateFunction = httpsCallable(functionsInstance, 'generateAssetActivitiesIcons', { timeout: 300000 });
+             if (!imageUrls.character) {
+                  throw new Error("Character image is required to generate activities icons.");
+             }
+             // Add the character image URL and activity preferences to the payload
+             payload = {
+                inviteCode: currentValues.inviteCode,
+                characterImageUrl: imageUrls.character,
+                likedFunActivities: currentValues.likedFunActivities,
+                dislikedFunActivities: currentValues.dislikedFunActivities,
+                likedExerciseActivities: currentValues.likedExerciseActivities,
+                dislikedExerciseActivities: currentValues.dislikedExerciseActivities,
+             }
+        }
+
+
         const result = await generateFunction(payload) as { data: { assetUrl: string } };
         
         setLastResult({
@@ -773,6 +791,16 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
           if (step === 2 && genType === 'foodIcons') {
             hasBeenGenerated = !!imageUrls.foodIcons;
           }
+          
+          // Special case for activitiesIcons generation in Step 3:
+           if (step === 3 && genType === 'activitiesIcons') {
+            hasBeenGenerated = !!imageUrls.activitiesIcons;
+          }
+
+
+          let currentImageUrl = (step === 1 && genType === 'expressions' && imageUrls.faceAtlas) ? imageUrls.faceAtlas :
+                                (step === 2 && genType === 'foodIcons' && imageUrls.foodIcons) ? imageUrls.foodIcons :
+                                (step === 3 && genType === 'activitiesIcons' && imageUrls.activitiesIcons) ? imageUrls.activitiesIcons : imageUrls[genConfig.imageUrlKey];
 
           const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle' as const, message: '' };
           
@@ -784,7 +812,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               key={genType}
               title={genConfig.title}
               generationType={genType}
-              imageUrl={(step === 1 && genType === 'expressions' && imageUrls.faceAtlas) ? imageUrls.faceAtlas : (step === 2 && genType === 'foodIcons' && imageUrls.foodIcons) ? imageUrls.foodIcons : imageUrls[genConfig.imageUrlKey]}
+ imageUrl={currentImageUrl}
               state={resultForThisUnit}
               isGenerating={isGenerating}
               hasBeenGenerated={hasBeenGenerated}
