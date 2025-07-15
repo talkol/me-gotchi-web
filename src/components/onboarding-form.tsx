@@ -170,10 +170,10 @@ const fileToDataURI = (file: File): Promise<string> => {
     });
 };
 
-const AssetPreview = ({ imageUrl, isGenerating, status, message, isLandscape }: { imageUrl?: string; isGenerating: boolean, status: GenerationState['status'], message: string, isLandscape?: boolean }) => {
+const AssetPreview = ({ imageUrl, isGenerating, status, message, isLandscape, backgroundColor }: { imageUrl?: string; isGenerating: boolean, status: GenerationState['status'], message: string, isLandscape?: boolean, backgroundColor?: string }) => {
     const showLoading = isGenerating && !imageUrl;
     const showPreviousImageWhileLoading = isGenerating && imageUrl;
-    
+
     // State to hold the final URL with a cache-busting param
     const [finalImageUrl, setFinalImageUrl] = useState<string | undefined>(undefined);
 
@@ -186,7 +186,6 @@ const AssetPreview = ({ imageUrl, isGenerating, status, message, isLandscape }: 
             setFinalImageUrl(undefined);
         }
  }, [imageUrl]); // Ensure imageUrl is a dependency
-
 
   const AssetDisplay = useMemo(() => {
         if (finalImageUrl) {
@@ -211,8 +210,8 @@ const AssetPreview = ({ imageUrl, isGenerating, status, message, isLandscape }: 
     }, [finalImageUrl, isGenerating, status, message]);
 
     return (
- <div className={`w-full mx-auto bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden ${isLandscape ? 'aspect-video' : 'aspect-square'}`}>
-            {AssetDisplay}
+        <div className={`w-full mx-auto bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden ${isLandscape ? 'aspect-video' : 'aspect-square'}`} style={{ backgroundColor: backgroundColor || 'inherit' }}> {/* Apply background color here */}
+ {AssetDisplay}
         </div>
     );
 };
@@ -225,6 +224,7 @@ const GenerationUnit = ({
     isGenerating,
     isLandscape,
     hasBeenGenerated,
+    backgroundColor,
     isLocked,
     onGenerate
 }: {
@@ -235,6 +235,7 @@ const GenerationUnit = ({
     isGenerating: boolean;
     isLandscape: boolean;
     hasBeenGenerated: boolean;
+    backgroundColor?: string;
     isLocked: boolean;
     onGenerate: (generationType: string) => void;
 }) => (
@@ -254,7 +255,7 @@ const GenerationUnit = ({
                 <><Wand2 className="mr-2 h-4 w-4" /> {title}</>
             )}
         </Button>
-        <AssetPreview imageUrl={imageUrl} isGenerating={isGenerating} isLandscape={isLandscape} status={state.status} message={state.message} />
+        <AssetPreview imageUrl={imageUrl} isGenerating={isGenerating} isLandscape={isLandscape} backgroundColor={backgroundColor} status={state.status} message={state.message} />
     </div>
 );
 
@@ -275,7 +276,7 @@ const ColorPickerInput = ({ field, textColor }: { field: any, textColor?: string
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [containerRef]); // Depend on containerRef
+  }, [containerRef, inputRef]); // Depend on containerRef and inputRef
 
   return (
     <div className="relative" ref={containerRef}> {/* Attach the container ref */}
@@ -609,7 +610,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       inviteCode: inviteCode,
       step: 1,
       imageUrls: {},
-      likedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
+      likedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })), // Initialize with empty items
       dislikedFoods: [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
       likedDrinks: [...Array(2)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
       dislikedDrinks: [...Array(1)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
@@ -620,8 +621,9 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       environments: [...Array(4)].map(() => ({ explanation: "" })),
     },
     // Add default values for new color fields
-    favoriteColor: '',
-    foodBackgroundColor: '', activitiesBackgroundColor: '',
+    favoriteColor: '#ffffff', // Default to white
+    foodBackgroundColor: '#ffffff', // Default to white
+    activitiesBackgroundColor: '#ffffff', // Default to white
   });
 
   const { control, handleSubmit, watch, setError, setValue, trigger, getValues, reset } = form;
@@ -908,6 +910,8 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   
   const renderGenerationUnits = (step: number) => {
       const config = STEPS.find(s => s.id === step);
+       const formValues = watch(); // Watch the entire form for color values
+
       if (!config) return null;
 
       return config.generations.map(genConfig => {
@@ -944,6 +948,15 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
           const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle' as const, message: '' };
           
           const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
+
+          let backgroundColor = undefined;
+            if (step === 2 && genType === 'foodIcons') {
+                backgroundColor = formValues.foodBackgroundColor;
+            } else if (step === 3 && genType === 'activitiesIcons') {
+                backgroundColor = formValues.activitiesBackgroundColor;
+            }
+
+
           const isLocked = !dependenciesMet;
           return (
             <GenerationUnit // Removed the direct wrapper div here
@@ -956,6 +969,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               hasBeenGenerated={hasBeenGenerated}
               isLocked={isLocked}
               onGenerate={onGenerate}
+              backgroundColor={backgroundColor} // Pass the background color
               isLandscape={isStep4}
             />
           );
