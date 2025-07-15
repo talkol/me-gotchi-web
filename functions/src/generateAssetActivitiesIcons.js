@@ -5,16 +5,16 @@ import {GenerationRequestSchema, savePreferences} from "./shared.js";
 import { getStorage } from "firebase-admin/storage";
 import * as logger from "firebase-functions/logger";
 
-function item(foodItem) {
-  if (foodItem.addExplanation && foodItem.explanation) {
-    return foodItem.explanation;
+function item(acivityItem) {
+  if (acivityItem.addExplanation && acivityItem.explanation) {
+    return acivityItem.explanation;
   } else {
-    return foodItem.name;
+    return acivityItem.name;
   }
 }
 
 /**
- * Generates a list of food icons based on user input data.
+ * Generates a list of activity icons based on user input data.
  * Saves the generated image to Google Cloud Storage and returns its public URL.
  * It also saves user preferences before the generation attempt.
  * This is a top-level callable Cloud Function.
@@ -24,29 +24,29 @@ function item(foodItem) {
  * @returns {Promise<{assetUrl: string}>} - A promise resolving with the public URL of the generated character asset.
  * @throws {HttpsError} - Throws HttpsError on validation, OpenAI, or storage errors.
  */
-export const generateAssetFoodIconsImp = onCall({timeoutSeconds: 300}, async (request) => {
-    if (!request.data.likedFoods || request.data.likedFoods.length != 3) {
+export const generateAssetActivitiesIconsImp = onCall({timeoutSeconds: 300}, async (request) => {
+    if (!request.data.likedFunActivities || request.data.likedFunActivities.length != 3) {
       throw new HttpsError(
         "invalid-argument",
-        "likedFoods of len 3 is required to generate the food icons asset.",
+        "likedFunActivities of len 3 is required to generate the activities icons asset.",
       );
     }
-    if (!request.data.dislikedFoods || request.data.dislikedFoods.length != 3) {
+    if (!request.data.dislikedFunActivities || request.data.dislikedFunActivities.length != 2) {
       throw new HttpsError(
         "invalid-argument",
-        "dislikedFoods of len 3 is required to generate the food icons asset.",
+        "dislikedFunActivities of len 2 is required to generate the activities icons asset.",
       );
     }
-    if (!request.data.likedDrinks || request.data.likedDrinks.length != 2) {
+    if (!request.data.likedExerciseActivities || request.data.likedExerciseActivities.length != 2) {
       throw new HttpsError(
         "invalid-argument",
-        "likedDrinks of len 2 is required to generate the food icons asset.",
+        "likedExerciseActivities of len 2 is required to generate the activities icons asset.",
       );
     }
-    if (!request.data.dislikedDrinks || request.data.dislikedDrinks.length != 1) {
+    if (!request.data.dislikedExerciseActivities || request.data.dislikedExerciseActivities.length != 1) {
       throw new HttpsError(
         "invalid-argument",
-        "dislikedDrinks of len 1 is required to generate the food icons asset.",
+        "dislikedExerciseActivities of len 1 is required to generate the activities icons asset.",
       );
     }
     if (!request.data.inviteCode) {
@@ -83,7 +83,7 @@ export const generateAssetFoodIconsImp = onCall({timeoutSeconds: 300}, async (re
           content: [
             {
               type: "input_text",
-              text: `Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put an illustration for a game asset in the art style of Super Mario. Top row: ${item(data.likedFoods[0])}; ${item(data.likedFoods[1])}; ${item(data.likedFoods[2])}. Middle row: ${item(data.dislikedFoods[0])}; ${item(data.dislikedFoods[1])}; ${item(data.dislikedFoods[2])}. Bottom row: ${item(data.likedDrinks[0])}; ${item(data.likedDrinks[1])}; ${item(data.dislikedDrinks[0])}.`,
+              text: `Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put an illustration for a game asset in the art style of Super Mario. Top row: ${item(data.likedFunActivities[0])}; ${item(data.likedFunActivities[1])}; ${item(data.likedFunActivities[2])}. Middle row: ${item(data.dislikedFunActivities[0])}; ${item(data.dislikedFunActivities[1])}; ${item(data.likedExerciseActivities[0])}. Bottom row: ${item(data.likedExerciseActivities[1])}; ${item(data.dislikedExerciseActivities[0])}; bed.`,
             },
           ],
         },
@@ -115,7 +115,7 @@ export const generateAssetFoodIconsImp = onCall({timeoutSeconds: 300}, async (re
     const imageBuffer = Buffer.from(generatedImageB64, "base64");
     // Gemini - NEVER EDIT CODE ENDING HERE!
     
-    const storagePath = `${data.inviteCode}/food-atlas.png`;
+    const storagePath = `${data.inviteCode}/activities-atlas.png`;
     const bucket = getStorage().bucket();
     const file = bucket.file(storagePath);
   
