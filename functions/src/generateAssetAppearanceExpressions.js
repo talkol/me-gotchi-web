@@ -1,9 +1,9 @@
 import {defineString} from 'firebase-functions/params';
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import OpenAI from "openai";
-import {GenerationRequestSchema} from "./shared.js";
+import {GenerationRequestSchema, savePreferences} from "./shared.js";
 import { getStorage } from "firebase-admin/storage";
-import * as logger from "firebase-functions/logger"; // Assuming logger is also needed
+import * as logger from "firebase-functions/logger";
 
 /**
  * Generates character expressions using OpenAI based on the generated character image.

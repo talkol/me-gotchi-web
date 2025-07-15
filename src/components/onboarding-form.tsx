@@ -693,6 +693,23 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
              // Add the character image URL to the payload
              payload.characterImageUrl = imageUrls.character;
         }
+        
+        // If generating food icons, use the foodIcons function
+        if (generationType === 'foodIcons') {
+             generateFunction = httpsCallable(functionsInstance, 'generateAssetFoodIcons', { timeout: 300000 });
+             if (!imageUrls.character) {
+                  throw new Error("Character image is required to generate food icons.");
+             }
+             // Add the character image URL and food/drink preferences to the payload
+             payload = {
+                inviteCode: currentValues.inviteCode,
+                characterImageUrl: imageUrls.character,
+                likedFoods: currentValues.likedFoods,
+                dislikedFoods: currentValues.dislikedFoods,
+                likedDrinks: currentValues.likedDrinks,
+                dislikedDrinks: currentValues.dislikedDrinks,
+             }
+        }
 
         const result = await generateFunction(payload) as { data: { assetUrl: string } };
         

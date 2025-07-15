@@ -20,7 +20,6 @@ export const EnvironmentItemSchema = z.object({
   
 // Define a Zod schema for input validation
 export const GenerationRequestSchema = z.object({
-    generationType: z.string(),
     inviteCode: z.string().min(1),
     photoDataUri: z.string().optional().nullable(),
     characterImageUrl: z.string().optional().nullable(),
