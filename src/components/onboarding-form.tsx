@@ -140,15 +140,13 @@ const STEPS: StepConfig[] = [
   { id: 1, title: "Appearance", fields: ["firstName", "gender", "age", "photo"], generations: [
       { title: "Generate Character", generationType: "character", imageUrlKey: "character" },
       { title: "Generate Expressions", generationType: "expressions", imageUrlKey: "expressions", dependencies: ["character"]},
-  ] },
+  ]},
   { id: 2, title: "Food Preferences", fields: ["likedFoods", "dislikedFoods", "likedDrinks", "dislikedDrinks"], generations: [
-      { title: "Generate Icons", generationType: "foodIcons", imageUrlKey: "foodIcons", dependencies: ["character"] },
-      { title: "Remove Background", generationType: "foodRemoveBg", imageUrlKey: "foodRemoveBg", dependencies: ["foodIcons"] },
-  ] },
+      { title: "Generate Icons", generationType: "foodIcons", imageUrlKey: "foodIcons", dependencies: ["character"] }
+  ]},
   { id: 3, title: "Activity Preferences", fields: ["likedFunActivities", "dislikedFunActivities", "likedExerciseActivities", "dislikedExerciseActivities"], generations: [
        { title: "Generate Icons", generationType: "activitiesIcons", imageUrlKey: "activitiesIcons", dependencies: ["character"] },
-       { title: "Remove Background", generationType: "activitiesRemoveBg", imageUrlKey: "activitiesRemoveBg", dependencies: ["activitiesIcons"] },
-  ] },
+  ]},
   { id: 4, title: "Environments", fields: ["environments"], generations: [
       { title: "Generate 1", generationType: "environment1", imageUrlKey: "environment1", dependencies: ["character"] },
       { title: "Generate 2", generationType: "environment2", imageUrlKey: "environment2", dependencies: ["character"] },
@@ -553,18 +551,21 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       // Fetch preferences
       const prefsUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(inviteCode)}/preferences.json`;
       try {
-        const response = await fetch(prefsUrl);
+        const response = await fetch(`${prefsUrl}?cache-bust=${new Date().getTime()}`);
         if (response.ok) {
           const prefsData = await response.json();
-          // Use reset to update all form values
-          reset(currentValues => ({
-              ...currentValues, // Keep default structure
-              ...prefsData, // Overwrite with fetched data
-              inviteCode: currentValues.inviteCode, // Ensure inviteCode isn't overwritten
-              gender: prefsData.gender, // Explicitly set gender
-              step: currentValues.step, // Keep current step
-          }));
-          console.log("Successfully loaded and pre-populated form from preferences.json");
+          reset({
+            ...prefsData,
+            likedFoods: prefsData.likedFoods || [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
+            dislikedFoods: prefsData.dislikedFoods || [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
+            likedDrinks: prefsData.likedDrinks || [...Array(2)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
+            dislikedDrinks: prefsData.dislikedDrinks || [...Array(1)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
+            likedFunActivities: prefsData.likedFunActivities || [...Array(3)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
+            dislikedFunActivities: prefsData.dislikedFunActivities || [...Array(2)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
+            likedExerciseActivities: prefsData.likedExerciseActivities || [...Array(2)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
+            dislikedExerciseActivities: prefsData.dislikedExerciseActivities || [...Array(1)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
+            environments: prefsData.environments || [...Array(4)].map(() => ({ explanation: "" })),
+          });
         } else {
           // This is not an error, it just means the user is new.
           console.log("No existing preferences.json found, starting with a fresh form.");
@@ -598,6 +599,17 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         console.warn("Error checking for existing face atlas asset:", error);
       }
 
+      // Check for existing food icons asset
+      const foodIconsFilePath = `${inviteCode}/food-atlas.png`;
+      const foodIconsPublicUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(foodIconsFilePath)}`;
+      try {
+        const response = await fetch(foodIconsPublicUrl, { method: 'HEAD' });
+        if (response.ok) {
+          setImageUrls(prev => ({ ...prev, foodIcons: foodIconsPublicUrl }));
+        }
+      } catch (error) {
+        console.warn("Error checking for existing food icons asset:", error);
+      }
     };
     fetchExistingData();
   }, [inviteCode, reset]);
@@ -757,6 +769,11 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               hasBeenGenerated = !!imageUrls.faceAtlas;
           }
 
+          // Special case for foodIcons generation in Step 2:
+          if (step === 2 && genType === 'foodIcons') {
+            hasBeenGenerated = !!imageUrls.foodIcons;
+          }
+
           const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle' as const, message: '' };
           
           const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
@@ -767,7 +784,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               key={genType}
               title={genConfig.title}
               generationType={genType}
-              imageUrl={genType === 'expressions' && imageUrls.faceAtlas ? imageUrls.faceAtlas : imageUrls[genConfig.imageUrlKey]}
+              imageUrl={(step === 1 && genType === 'expressions' && imageUrls.faceAtlas) ? imageUrls.faceAtlas : (step === 2 && genType === 'foodIcons' && imageUrls.foodIcons) ? imageUrls.foodIcons : imageUrls[genConfig.imageUrlKey]}
               state={resultForThisUnit}
               isGenerating={isGenerating}
               hasBeenGenerated={hasBeenGenerated}
