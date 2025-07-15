@@ -40,6 +40,7 @@ export const GenerationRequestSchema = z.object({
     likedExerciseActivities: z.array(ActivityItemSchema).optional(),
     dislikedExerciseActivities: z.array(ActivityItemSchema).optional(),
     
+    environmentNumber: z.number().min(1).max(4).optional(),
     environments: z.array(EnvironmentItemSchema).optional(),
   });
 
@@ -62,6 +63,7 @@ export async function savePreferences(inviteCode, preferences) {
     // Clean up non-preference data before saving
     const prefeferencesToSave = { ...preferences };
     delete prefeferencesToSave.photoDataUri;
+    delete prefeferencesToSave.environmentNumber;
     delete prefeferencesToSave.generationType;
     delete prefeferencesToSave.imageUrls; // We already store image URLs separately
   

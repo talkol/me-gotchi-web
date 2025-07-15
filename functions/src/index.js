@@ -3,6 +3,7 @@ import {generateAssetAppearanceCharacterImp} from "./generateAssetAppearanceChar
 import {generateAssetAppearanceExpressionsImp} from "./generateAssetAppearanceExpressions.js";
 import {generateAssetFoodIconsImp} from "./generateAssetFoodIcons.js";
 import { generateAssetActivitiesIconsImp } from "./generateAssetActivitiesIcons.js";
+import { generateAssetEnvironmentImp } from "./generateAssetEnvironment.js";
 
 // Initialize Firebase Admin SDK
 initializeApp();
@@ -11,3 +12,4 @@ export const generateAssetAppearanceCharacter = generateAssetAppearanceCharacter
 export const generateAssetAppearanceExpressions = generateAssetAppearanceExpressionsImp;
 export const generateAssetFoodIcons = generateAssetFoodIconsImp;
 export const generateAssetActivitiesIcons = generateAssetActivitiesIconsImp;
+export const generateAssetEnvironment = generateAssetEnvironmentImp;
