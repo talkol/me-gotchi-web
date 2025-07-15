@@ -22,6 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { UploadCloud, Sparkles, AlertCircle, CheckCircle, Wand2, RefreshCw, ArrowLeft, ArrowRight } from "lucide-react";
+import { HexColorPicker, HexColorInput } from "react-colorful";
 
 type OnboardingFormProps = {
   inviteCode: string;
@@ -48,6 +49,9 @@ const OnboardingFormSchema = z.object({
   gender: z.enum(["male", "female"]).optional(),
   age: z.coerce.number().min(1, "Must be at least 1.").max(120, "Must be 120 or less.").optional(),
   photo: z.any().optional(),
+  favoriteColor: z.string().optional(), // Add favoriteColor field
+  foodBackgroundColor: z.string().optional(), // Add foodBackgroundColor field
+  activitiesBackgroundColor: z.string().optional(), // Add activitiesBackgroundColor field
   
   likedFoods: z.array(FoodItemSchema).length(3),
   dislikedFoods: z.array(FoodItemSchema).length(3),
@@ -139,10 +143,10 @@ type StepConfig = {
 
 const STEPS: StepConfig[] = [
   { id: 1, title: "Appearance", fields: ["firstName", "gender", "age", "photo"], generations: [
-      { title: "Generate Character", generationType: "character", imageUrlKey: "character" },
-      { title: "Generate Expressions", generationType: "expressions", imageUrlKey: "expressions", dependencies: ["character"]},
+      { title: "Generate Character", generationType: "character", imageUrlKey: "character" }, // fields: ["firstName", "gender", "age", "photo", "favoriteColor"]
+      { title: "Generate Expressions", generationType: "expressions", imageUrlKey: "expressions", dependencies: ["character"] }, // fields: ["firstName", "gender", "age", "photo", "favoriteColor"]
   ]},
-  { id: 2, title: "Food Preferences", fields: ["likedFoods", "dislikedFoods", "likedDrinks", "dislikedDrinks"], generations: [
+  { id: 2, title: "Food Preferences", fields: ["likedFoods", "dislikedFoods", "likedDrinks", "dislikedDrinks"], generations: [ // fields: ["likedFoods", "dislikedFoods", "likedDrinks", "dislikedDrinks", "foodBackgroundColor"]
       { title: "Generate Icons", generationType: "foodIcons", imageUrlKey: "foodIcons", dependencies: ["character"] }
   ]},
   { id: 3, title: "Activity Preferences", fields: ["likedFunActivities", "dislikedFunActivities", "likedExerciseActivities", "dislikedExerciseActivities"], generations: [
@@ -254,6 +258,45 @@ const GenerationUnit = ({
     </div>
 );
 
+const ColorPickerInput = ({ field, textColor }: { field: any, textColor?: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null); // Add ref for the main container
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Dismiss if the click is outside the main container that holds both input and picker
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [containerRef]); // Depend on containerRef
+
+  return (
+    <div className="relative" ref={containerRef}> {/* Attach the container ref */}
+      <Input
+        ref={inputRef}
+        {...field}
+        value={field.value ?? ''}
+        onClick={() => setIsOpen(prev => !prev)}
+        placeholder="eg: #FF0000"
+ className="text-base cursor-pointer"
+ style={{ backgroundColor: field.value, color: textColor || '#000000' }}
+        readOnly // Prevent manual input for simplicity with the picker
+      />
+ {isOpen && (
+        <div ref={pickerRef} className="absolute z-10 mt-2 shadow-lg">
+          <HexColorPicker color={field.value || '#ffffff'} onChange={field.onChange} />
+        </div> 
+      )}
+    </div>
+  );
+};
 
 const PreferenceItem = ({
   control, name, index, watch, placeholderName, placeholderDescription,
@@ -377,6 +420,14 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
                     <FormMessage />
                 </FormItem>
             )} />
+              <FormField control={control} name="favoriteColor" render={({ field }) => (
+                <FormItem>
+                    <FormLabel className="text-base font-semibold">Favorite Color</FormLabel>
+                    <FormControl><ColorPickerInput field={field} textColor="#FFFFFF" /></FormControl>
+                    <FormMessage />
+                </FormItem>
+            )} />
+
         </div>
         <FormField control={control} name="photo" render={({ field: { onChange, value, ...rest }, fieldState }) => (
             <FormItem>
@@ -435,6 +486,14 @@ const Step2 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
                 {dislikedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedDrinks" placeholderName="eg: MILK" placeholderDescription="A glass of plain milk" />)}
             </div>
         </div>
+         {/* Add Food Background Color Field */}
+         <div className="mt-6">
+            <FormField control={control} name="foodBackgroundColor" render={({ field }) => (
+                <FormItem>
+                    <FormLabel className="text-base font-semibold">Food Background Color</FormLabel>
+                    <FormControl><ColorPickerInput field={field} textColor="#000000" /></FormControl>
+                </FormItem>
+            )} /></div>
     </div>
   );
 };
@@ -469,6 +528,14 @@ const Step3 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
                 {dislikedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedExerciseActivities" placeholderName="eg: RUNNING" placeholderDescription="A person running from profile view" />)}
             </div>
         </div>
+         {/* Add Activities Background Color Field */}
+        <div className="mt-6">
+            <FormField control={control} name="activitiesBackgroundColor" render={({ field }) => (
+                <FormItem>
+                    <FormLabel className="text-base font-semibold">Activities Background Color</FormLabel>
+                    <FormControl><ColorPickerInput field={field} textColor="#000000" /></FormControl>
+                </FormItem>
+            )} /></div>
     </div>
   );
 };
@@ -552,6 +619,9 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       dislikedExerciseActivities: [...Array(1)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
       environments: [...Array(4)].map(() => ({ explanation: "" })),
     },
+    // Add default values for new color fields
+    favoriteColor: '',
+    foodBackgroundColor: '', activitiesBackgroundColor: '',
   });
 
   const { control, handleSubmit, watch, setError, setValue, trigger, getValues, reset } = form;
@@ -577,6 +647,10 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
             dislikedExerciseActivities: prefsData.dislikedExerciseActivities || [...Array(1)].map(() => ({ name: "", addExplanation: false, explanation: "" })),
             environments: prefsData.environments || [...Array(4)].map(() => ({ explanation: "" })),
           });
+            // Ensure new color fields are reset if they exist in prefsData
+            if (prefsData.favoriteColor !== undefined) setValue('favoriteColor', prefsData.favoriteColor);
+            if (prefsData.foodBackgroundColor !== undefined) setValue('foodBackgroundColor', prefsData.foodBackgroundColor);
+            if (prefsData.activitiesBackgroundColor !== undefined) setValue('activitiesBackgroundColor', prefsData.activitiesBackgroundColor);
         } else {
           // This is not an error, it just means the user is new.
           console.log("No existing preferences.json found, starting with a fresh form.");
