@@ -165,7 +165,7 @@ const fileToDataURI = (file: File): Promise<string> => {
     });
 };
 
-const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: string; isGenerating: boolean, status: GenerationState['status'], message: string }) => {
+const AssetPreview = ({ imageUrl, isGenerating, status, message, isLandscape }: { imageUrl?: string; isGenerating: boolean, status: GenerationState['status'], message: string, isLandscape?: boolean }) => {
     const showLoading = isGenerating && !imageUrl;
     const showPreviousImageWhileLoading = isGenerating && imageUrl;
     
@@ -180,10 +180,10 @@ const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: 
         } else {
             setFinalImageUrl(undefined);
         }
-    }, [imageUrl]);
+ }, [imageUrl]); // Ensure imageUrl is a dependency
 
 
-    const AssetDisplay = useMemo(() => {
+  const AssetDisplay = useMemo(() => {
         if (finalImageUrl) {
             return (
                 <div className="relative w-full h-full">
@@ -206,7 +206,7 @@ const AssetPreview = ({ imageUrl, isGenerating, status, message }: { imageUrl?: 
     }, [finalImageUrl, isGenerating, status, message]);
 
     return (
-        <div className="w-full mx-auto aspect-square bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden">
+ <div className={`w-full mx-auto bg-secondary rounded-lg border border-dashed flex items-center justify-center overflow-hidden ${isLandscape ? 'aspect-video' : 'aspect-square'}`}>
             {AssetDisplay}
         </div>
     );
@@ -218,6 +218,7 @@ const GenerationUnit = ({
     imageUrl,
     state,
     isGenerating,
+    isLandscape,
     hasBeenGenerated,
     isLocked,
     onGenerate
@@ -227,6 +228,7 @@ const GenerationUnit = ({
     imageUrl?: string;
     state: GenerationState;
     isGenerating: boolean;
+    isLandscape: boolean;
     hasBeenGenerated: boolean;
     isLocked: boolean;
     onGenerate: (generationType: string) => void;
@@ -247,7 +249,7 @@ const GenerationUnit = ({
                 <><Wand2 className="mr-2 h-4 w-4" /> {title}</>
             )}
         </Button>
-        <AssetPreview imageUrl={imageUrl} isGenerating={isGenerating} status={state.status} message={state.message} />
+        <AssetPreview imageUrl={imageUrl} isGenerating={isGenerating} isLandscape={isLandscape} status={state.status} message={state.message} />
     </div>
 );
 
@@ -472,6 +474,14 @@ const Step3 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
 
 const Step4 = ({ control }: { control: Control<OnboardingFormData> }) => {
   const { fields: environments } = useFieldArray({ control, name: 'environments' });
+
+  const environmentPlaceholders = [
+    "eg: Vibrant street in Hampstead, London, showing multiple houses in a bright summer day",
+    "eg: Vibrant colorful children playroom that has toys and games and is appropriate for a 9 years old boy named Leo",
+    "eg: Vibrant colorful classroom showing multiple desks",
+    "eg: Vibrant colorful playground for older children that has games and fun",
+  ];
+
   return (
     <div className="space-y-4">
         <CardDescription>Describe environments the character will normally visit.</CardDescription>
@@ -479,17 +489,17 @@ const Step4 = ({ control }: { control: Control<OnboardingFormData> }) => {
             {environments.map((item, index) => (
             <FormField
                 key={item.id}
-                control={control}
                 name={`environments.${index}.explanation`}
+                control={control}
                 render={({ field }) => (
                 <FormItem>
                     <FormLabel className="text-base font-semibold">Environment {index + 1}</FormLabel>
                     <FormControl>
-                    <Textarea {...field} placeholder="eg: vibrant colorful children playroom that has toys and games and is appropriate for a 9 years old boy named Leo" className="min-h-[80px] text-base" />
-                    </FormControl>
+                    <Textarea {...field} placeholder={environmentPlaceholders[index]} className="min-h-[80px] text-base" />
+                    </FormControl> 
                     <FormMessage />
                 </FormItem>
-                )}
+              )}
             />
             ))}
         </div>
@@ -790,6 +800,8 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       if (!config) return null;
 
       return config.generations.map(genConfig => {
+          const isStep4 = step === 4;
+
           const genType = genConfig.generationType;
           const isGenerating = activeGeneration === genType;
           let hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
@@ -818,18 +830,18 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
           
           const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
           const isLocked = !dependenciesMet;
-
           return (
-            <GenerationUnit
+            <GenerationUnit // Removed the direct wrapper div here
               key={genType}
               title={genConfig.title}
               generationType={genType}
- imageUrl={currentImageUrl}
+              imageUrl={currentImageUrl}
               state={resultForThisUnit}
               isGenerating={isGenerating}
               hasBeenGenerated={hasBeenGenerated}
               isLocked={isLocked}
               onGenerate={onGenerate}
+              isLandscape={isStep4}
             />
           );
       });
