@@ -610,6 +610,18 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       } catch (error) {
         console.warn("Error checking for existing food icons asset:", error);
       }
+
+      // Check for existing activities icons asset
+      const activitiesIconsFilePath = `${inviteCode}/activities-atlas.png`;
+      const activitiesIconsPublicUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(activitiesIconsFilePath)}`;
+      try {
+        const response = await fetch(activitiesIconsPublicUrl, { method: 'HEAD' });
+        if (response.ok) {
+          setImageUrls(prev => ({ ...prev, activitiesIcons: activitiesIconsPublicUrl }));
+        }
+      } catch (error) {
+        console.warn("Error checking for existing activities icons asset:", error);
+      }
     };
     fetchExistingData();
   }, [inviteCode, reset]);
