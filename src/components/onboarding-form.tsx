@@ -188,15 +188,17 @@ const AssetPreview = ({ imageUrl, isGenerating, status, message, isLandscape, ba
 
     // This effect runs only on the client, after hydration
     useEffect(() => {
+        // Only update if imageUrl is valid and generation has finished or is starting
         if (imageUrl) {
             // Append a timestamp to bust the cache, only on the client
             setFinalImageUrl(`${imageUrl}?v=${new Date().getTime()}`);
-        } else {
+        } else if (!isGenerating) { // Clear URL if not generating and imageUrl is empty
             setFinalImageUrl(undefined);
         }
- }, [imageUrl]); // Ensure imageUrl is a dependency
+    }, [imageUrl, isGenerating]); // Ensure imageUrl AND isGenerating are dependencies
 
-  const AssetDisplay = useMemo(() => {
+
+ const AssetDisplay = useMemo(() => {
         if (finalImageUrl) {
             return (
                 <div className="relative w-full h-full">
@@ -765,13 +767,6 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
        if (generationType === 'character') {
          setValue("imageUrl", lastResult.imageUrl);
-       }
-
-       if (currentStep !== 4) {
-        toast({
-            title: "Generation Complete!",
-            description: lastResult.message
-        });
        }
     }
   }, [lastResult, toast, setValue, currentStep]);
