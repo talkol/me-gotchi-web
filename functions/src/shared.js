@@ -200,12 +200,12 @@ export async function savePreferences(inviteCode, preferences) {
     ];
     res.config = {
         "name": preferences.firstName.toUpperCase(),
-        "favorite_color": preferences.favoriteColor,
-        "favorite_color_light": colorApplyHslDelta(preferences.favoriteColor, 0, -25, +30),
-        "food_bg_color": preferences.foodBackgroundColor,
-        "food_bg_color_dark": colorApplyHslDelta(preferences.foodBackgroundColor, 0, -25, -30),
-        "activities_bg_color": preferences.activitiesBackgroundColor,
-        "activities_bg_color_dark": colorApplyHslDelta(preferences.activitiesBackgroundColor, 0, -25, -30),
+        "favorite_color": preferences.favoriteColor || "#ffffff",
+        "favorite_color_light": colorApplyHslDelta(preferences.favoriteColor || "#ffffff", 0, -25, +30),
+        "food_bg_color": preferences.foodBackgroundColor || "#ffffff",
+        "food_bg_color_dark": colorApplyHslDelta(preferences.foodBackgroundColor || "#ffffff", 0, -25, -30),
+        "activities_bg_color": preferences.activitiesBackgroundColor || "#ffffff",
+        "activities_bg_color_dark": colorApplyHslDelta(preferences.activitiesBackgroundColor || "#ffffff", 0, -25, -30),
         "day_seconds": 86400,
         "food_empty_seconds": 280000,
         "drink_empty_seconds": 130000,
