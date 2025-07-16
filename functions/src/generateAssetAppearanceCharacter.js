@@ -58,7 +58,7 @@ export const generateAssetAppearanceCharacterImp = onCall({timeoutSeconds: 300},
           content: [
             {
               type: "input_text",
-              text: `Create a game character based on the likeness of this photo. Focus on the face and make an illustration. White background please.`,
+              text: `Create a game character based on the likeness of this photo. Focus on the face and make an illustration. White background. The style should not be photo-realistic but should be a detailed illustration.`,
             },
             {
               type: "input_image",

@@ -29,6 +29,9 @@ export const GenerationRequestSchema = z.object({
     firstName: z.string().max(11).optional(),
     gender: z.enum(["male", "female"]).optional(),
     age: z.coerce.number().min(1).max(120).optional(),
+    favoriteColor: z.string().optional().nullable(),
+    foodBackgroundColor: z.string().optional().nullable(),
+    activitiesBackgroundColor: z.string().optional().nullable(),
     
     likedFoods: z.array(FoodItemSchema).optional(),
     dislikedFoods: z.array(FoodItemSchema).optional(),
