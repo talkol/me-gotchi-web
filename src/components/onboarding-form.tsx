@@ -49,7 +49,7 @@ const OnboardingFormSchema = z.object({
   gender: z.enum(["male", "female"]).optional(),
   age: z.coerce.number().min(1, "Must be at least 1.").max(120, "Must be 120 or less.").optional(),
   photo: z.any().optional(),
-  favoriteColor: z.string().optional(), // Add favoriteColor field
+ favoriteColor: z.string().optional(), // Add favoriteColor field
   foodBackgroundColor: z.string().optional(), // Add foodBackgroundColor field
   activitiesBackgroundColor: z.string().optional(), // Add activitiesBackgroundColor field
   
@@ -87,6 +87,9 @@ const OnboardingFormSchema = z.object({
         if (data.age === undefined || data.age === null) {
             ctx.addIssue({ path: ['age'], message: 'Age is required.', code: 'custom'});
         }
+        if (!data.favoriteColor || data.favoriteColor.trim().length === 0) {
+            ctx.addIssue({ path: ['favoriteColor'], message: 'Favorite color is required.', code: 'custom'});
+        }
         if (!(data.photo instanceof File) || data.photo.size === 0) {
             // Only require a photo if one hasn't been uploaded yet (i.e., imageUrl is not set)
             if (!data.imageUrls?.character) {
@@ -103,6 +106,9 @@ const OnboardingFormSchema = z.object({
         data.dislikedFoods.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`dislikedFoods.${idx}.name`], message: 'This field is required.', code: 'custom'})});
         data.likedDrinks.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`likedDrinks.${idx}.name`], message: 'This field is required.', code: 'custom'})});
         data.dislikedDrinks.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`dislikedDrinks.${idx}.name`], message: 'This field is required.', code: 'custom'})});
+        if (!data.foodBackgroundColor || data.foodBackgroundColor.trim().length === 0) {
+          ctx.addIssue({ path: ['foodBackgroundColor'], message: 'Food Background Color is required.', code: 'custom'});
+        }
     }
 
     if (step >= 3) {
@@ -110,6 +116,9 @@ const OnboardingFormSchema = z.object({
         data.dislikedFunActivities.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`dislikedFunActivities.${idx}.name`], message: 'This field is required.', code: 'custom'})});
         data.likedExerciseActivities.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`likedExerciseActivities.${idx}.name`], message: 'This field is required.', code: 'custom'})});
         data.dislikedExerciseActivities.forEach((i, idx) => { if (!i.name || i.name.trim() === '') ctx.addIssue({path: [`dislikedExerciseActivities.${idx}.name`], message: 'This field is required.', code: 'custom'})});
+        if (!data.activitiesBackgroundColor || data.activitiesBackgroundColor.trim().length === 0) {
+          ctx.addIssue({ path: ['activitiesBackgroundColor'], message: 'Activities Background Color is required.', code: 'custom'});
+        }
     }
 
     if (step >= 4) {
@@ -621,9 +630,9 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       environments: [...Array(4)].map(() => ({ explanation: "" })),
     },
     // Add default values for new color fields
-    favoriteColor: '#ffffff', // Default to white
-    foodBackgroundColor: '#ffffff', // Default to white
-    activitiesBackgroundColor: '#ffffff', // Default to white
+    favoriteColor: "", // Default to empty
+    foodBackgroundColor: "", // Default to empty
+    activitiesBackgroundColor: "", // Default to empty
   });
 
   const { control, handleSubmit, watch, setError, setValue, trigger, getValues, reset } = form;
@@ -902,8 +911,8 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const isStepComplete = useMemo(() => {
       if (!stepConfig) return false;
       if (currentStep === 1) {
-          // For step 1, consider complete if either character or faceAtlas is generated
-          return !!imageUrls.character || !!imageUrls.faceAtlas;
+        console.log("isStepComplete Step 1");
+        return !!imageUrls.character || !!imageUrls.faceAtlas; 
       }
       return stepConfig.generations.every(g => !!imageUrls[g.imageUrlKey as keyof StepImageUrls]);
   }, [currentStep, stepConfig, imageUrls]);
