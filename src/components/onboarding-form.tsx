@@ -951,6 +951,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
                 dislikedFoods: currentValues.dislikedFoods,
                 likedDrinks: currentValues.likedDrinks,
                 dislikedDrinks: currentValues.dislikedDrinks,
+ foodBackgroundColor: currentValues.foodBackgroundColor, // Add background color
              }
         }
 
@@ -968,6 +969,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
                 dislikedFunActivities: currentValues.dislikedFunActivities,
                 likedExerciseActivities: currentValues.likedExerciseActivities,
                 dislikedExerciseActivities: currentValues.dislikedExerciseActivities,
+ activitiesBackgroundColor: currentValues.activitiesBackgroundColor, // Add background color
              }
         }
         
