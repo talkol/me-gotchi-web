@@ -774,11 +774,6 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
  const functionsInstance = getFunctions(app, 'us-central1');
       const generateFunction = httpsCallable(functionsInstance, 'generateAssetEnvironment', { timeout: 300000 });
 
-      if (!imageUrls.character) {
- setEnvironmentGenerationStates(prev => ({ ...prev, [generationType]: { status: 'error', message: "Character image is required to generate environments." } }));
- return;
-      }
-
       const environmentNumber = parseInt(generationType.replace('environment', ''), 10);
       if (isNaN(environmentNumber) || environmentNumber < 1 || environmentNumber > 4) {
  setEnvironmentGenerationStates(prev => ({ ...prev, [generationType]: { status: 'error', message: `Invalid environment generation type: ${generationType}` } }));
@@ -787,7 +782,6 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
 
       const payload = {
  inviteCode: formValues.inviteCode,
- characterImageUrl: imageUrls.character,
  environments: formValues.environments,
  environmentNumber: environmentNumber,
       };
@@ -976,9 +970,6 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         // If generating environments, use the generateAssetEnvironment function
         if (generationType.includes('environment')) {
              generateFunction = httpsCallable(functionsInstance, 'generateAssetEnvironment', { timeout: 300000 });
-             if (!imageUrls.character) {
-                  throw new Error("Character image is required to generate environments.");
-             }
              // Extract environment number from generationType (e.g., "environment1" -> 1)
              const environmentNumber = parseInt(generationType.replace('environment', ''), 10);
              if (isNaN(environmentNumber) || environmentNumber < 1 || environmentNumber > 4) {

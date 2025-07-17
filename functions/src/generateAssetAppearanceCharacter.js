@@ -110,7 +110,7 @@ export const generateAssetAppearanceCharacterImp = onCall({timeoutSeconds: 300},
     try {
       // Save preferences on every call
       await savePreferences(data.inviteCode, data);
-      return { assetUrl: finalUrl }; // Return the URL of the generated expressions asset
+      return { assetUrl: finalUrl, success: true }; // Return the URL of the generated expressions asset
     } catch (error) { 
       logger.error(`Error when saving preferences:`, error);
       if (error instanceof HttpsError) {
