@@ -130,7 +130,15 @@ type OnboardingFormData = z.infer<typeof OnboardingFormSchema>;
 type StepImageUrls = Record<string, string>;
 
 type GenerationState = {
-    status: "idle" | "success" | "error" | "generating";
+    status: "idle" | "success" | "error";
+    message: string;
+    imageUrl?: string;
+    generationType?: string;
+};
+
+type EnvironmentGenerationState = {
+ status: "idle" | "success" | "error" | "generating";
+    progress?: number; // Optional: for future progress tracking
     message: string;
     imageUrl?: string;
     generationType?: string;
@@ -612,6 +620,13 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [imageUrls, setImageUrls] = useState<StepImageUrls>({});
   const [activeGeneration, setActiveGeneration] = useState<string | null>(null);
 
+ // State for individual environment generation statuses
+  const [environmentGenerationStates, setEnvironmentGenerationStates] = useState<Record<string, EnvironmentGenerationState>>({
+    environment1: { status: "idle", message: "" },
+    environment2: { status: "idle", message: "" },
+    environment3: { status: "idle", message: "" },
+    environment4: { status: "idle", message: "" },
+  });
   const [lastResult, setLastResult] = useState<GenerationState>({ status: "idle", message: "" });
   
   const form = useForm<OnboardingFormData>({
@@ -742,41 +757,129 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   }, [inviteCode, reset]);
 
   useEffect(() => {
-    setValue('step', currentStep, { shouldValidate: true });
-    setValue('imageUrls', imageUrls);
-  }, [currentStep, setValue, imageUrls]);
+      setValue('step', currentStep, { shouldValidate: true });
+      setValue('imageUrls', imageUrls);
+  }, [currentStep, setValue, imageUrls]); // Removed environmentGenerationStates from dependencies
   
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
 
+  const generateEnvironmentAsset = async (generationType: string, formValues: OnboardingFormData, imageUrls: StepImageUrls) => {
+ setEnvironmentGenerationStates(prev => ({
+      ...prev,
+      [generationType]: { status: "generating", message: "Generating..." }
+    }));
+ try {
+ const functionsInstance = getFunctions(app, 'us-central1');
+      const generateFunction = httpsCallable(functionsInstance, 'generateAssetEnvironment', { timeout: 300000 });
+
+      if (!imageUrls.character) {
+ setEnvironmentGenerationStates(prev => ({ ...prev, [generationType]: { status: 'error', message: "Character image is required to generate environments." } }));
+ return;
+      }
+
+      const environmentNumber = parseInt(generationType.replace('environment', ''), 10);
+      if (isNaN(environmentNumber) || environmentNumber < 1 || environmentNumber > 4) {
+ setEnvironmentGenerationStates(prev => ({ ...prev, [generationType]: { status: 'error', message: `Invalid environment generation type: ${generationType}` } }));
+ return;
+      }
+
+      const payload = {
+ inviteCode: formValues.inviteCode,
+ characterImageUrl: imageUrls.character,
+ environments: formValues.environments,
+ environmentNumber: environmentNumber,
+      };
+
+      const result = await generateFunction(payload) as { data: { assetUrl?: string, success?: boolean, message?: string } };
+
+ setEnvironmentGenerationStates(prev => ({ ...prev, [generationType]: { status: result.data.success ? 'success' : 'error', message: result.data.message || (result.data.success ? 'Environment generated successfully!' : 'Failed to generate environment.'), imageUrl: result.data.assetUrl } }));
+ if (result.data.success && result.data.assetUrl) {
+ setImageUrls(prev => ({ ...prev, [generationType]: result.data.assetUrl! }));
+      }
+    } catch (error) {
+ console.error("Firebase environment generation error:", error);
+ const functionsError = error as HttpsCallableError;
+ const errorMessage = `Code: ${functionsError.code}. Message: ${functionsError.message}. Details: ${JSON.stringify(functionsError.details)}`;
+ setEnvironmentGenerationStates(prev => ({ ...prev, [generationType]: { status: 'error', message: errorMessage } }));
+    }
+  };
   useEffect(() => {
-    if (lastResult.status === "error") {
-      setActiveGeneration(null);
-      toast({
-        variant: "destructive",
-        title: "Oh no! Something went wrong.",
-        description: lastResult.message || "Please check the form for errors.",
-      });
-    }
-    if (lastResult.status === "success" && lastResult.imageUrl && lastResult.generationType) {
-       setActiveGeneration(null);
-       const generationType = lastResult.generationType as keyof StepImageUrls;
+      // Handle results for non-environment generations
+    if (!lastResult.generationType?.includes('environment') && lastResult.status !== "idle") {
+        if (lastResult.status === "error") {
+            setActiveGeneration(null);
+            toast({
+                variant: "destructive",
+                title: "Oh no! Something went wrong.",
+                description: lastResult.message || "Please check the form for errors.",
+            });
+        }
+        if (lastResult.status === "success" && lastResult.imageUrl && lastResult.generationType) {
+            setActiveGeneration(null);
+            const generationType = lastResult.generationType as keyof StepImageUrls;
+            setImageUrls(prev => ({ ...prev, [generationType]: lastResult.imageUrl! }));
 
-       setImageUrls(prev => ({...prev, [generationType]: lastResult.imageUrl!}));
-
-       if (generationType === 'character') {
-         setValue("imageUrl", lastResult.imageUrl);
-       }
+            if (generationType === 'character') {
+                setValue("imageUrl", lastResult.imageUrl);
+            }
+        }
     }
-  }, [lastResult, toast, setValue, currentStep]);
+  }, [lastResult, toast, setValue]);
+
+ // New effect to handle environment generation states
+ useEffect(() => {
+    Object.entries(environmentGenerationStates).forEach(([type, state]) => {
+      if (state.status === 'error') {
+        toast({
+          variant: "destructive",
+          title: `Environment ${type.replace('environment', '')} Generation Failed`,
+          description: state.message,
+        });
+      } else if (state.status === 'success') {
+        // Optional: success toast for environments, might be too many toasts if generating all 4
+        // toast({
+        //   title: `Environment ${type.replace('environment', '')} Generated`,
+        //   description: state.message,
+        // });
+      }
+    });
+  }, [environmentGenerationStates, toast]);
+
+
+  // Keep this useEffect for the general lastResult state (non-environment)
+ useEffect(() => {
+    if (!lastResult.generationType?.includes('environment') && lastResult.status !== "idle") {
+      if (lastResult.status === "error") {
+        setActiveGeneration(null);
+        toast({
+          variant: "destructive",
+          title: "Oh no! Something went wrong.",
+          description: lastResult.message || "Please check the form for errors.",
+        });
+      }
+      if (lastResult.status === "success" && lastResult.imageUrl && lastResult.generationType) {
+         setActiveGeneration(null);
+         const generationType = lastResult.generationType as keyof StepImageUrls;
+
+         setImageUrls(prev => ({...prev, [generationType]: lastResult.imageUrl!}));
+
+         if (generationType === 'character') {
+           setValue("imageUrl", lastResult.imageUrl);
+         }
+      }
+    }
+ }, [lastResult, toast, setValue]);
+
 
   const handleNext = async () => {
     if (currentStep < 5) {
-      setCurrentStep((prev) => prev + 1);
+ setCurrentStep((prev) => prev + 1);
     }
   };
 
+ 
   const handlePrevious = () => {
     if (currentStep > 1) {
       setCurrentStep((prev) => prev - 1);
@@ -797,7 +900,15 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         return;
     }
 
-    setActiveGeneration(generationType);
+ // For environments, update the state for the specific environment
+    if (generationType.includes('environment')) {
+        setEnvironmentGenerationStates(prev => ({
+            ...prev,
+            [generationType]: { status: "generating", message: "Generating..." }
+        }));
+    } else {
+        setActiveGeneration(generationType);
+    }
     
     try {
         const functionsInstance = getFunctions(app, 'us-central1');
@@ -880,15 +991,29 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
         }
 
 
-        const result = await generateFunction(payload) as { data: { assetUrl: string } };
+        const result = await generateFunction(payload) as { data: { assetUrl?: string, success?: boolean, message?: string } };
         
-        setLastResult({
+ if (generationType.includes('environment')) {
+ setEnvironmentGenerationStates(prev => ({
+                ...prev,
+                [generationType]: {
+                    status: result.data.success ? 'success' : 'error',
+                    message: result.data.message || (result.data.success ? 'Environment generated successfully!' : 'Failed to generate environment.'),
+                    imageUrl: result.data.assetUrl,
+                    generationType: generationType,
+                }
+ }));
+ if (result.data.success && result.data.assetUrl) {
+ setImageUrls(prev => ({ ...prev, [generationType]: result.data.assetUrl! }));
+ }
+ } else {
+ setLastResult({
             status: 'success',
             message: 'Asset generated successfully!',
             imageUrl: result.data.assetUrl,
             generationType: generationType,
         });
-
+ }
     } catch (error) {
         console.error("Full Firebase function call error:", error);
         const functionsError = error as HttpsCallableError;
@@ -899,17 +1024,26 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
             message: errorMessage,
             generationType: generationType,
         });
+ if (generationType.includes('environment')) {
+ setEnvironmentGenerationStates(prev => ({
+                ...prev,
+                [generationType]: {
+                    status: 'error',
+                    message: errorMessage,
+                    generationType: generationType,
+                }
+ }));
+ }
     }
   }
   
   const stepConfig = STEPS.find(s => s.id === currentStep);
   const isStepComplete = useMemo(() => {
-      if (!stepConfig) return false;
-      if (currentStep === 1) {
-        console.log("isStepComplete Step 1");
+    if (!stepConfig) return false;
+    if (currentStep === 1) {
         return !!imageUrls.character || !!imageUrls.faceAtlas; 
-      }
-      return stepConfig.generations.every(g => !!imageUrls[g.imageUrlKey as keyof StepImageUrls]);
+    }
+    return stepConfig.generations.every(g => !!imageUrls[g.imageUrlKey as keyof StepImageUrls]);
   }, [currentStep, stepConfig, imageUrls]);
   
   const renderGenerationUnits = (step: number) => {
@@ -922,7 +1056,12 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
           const isStep4 = step === 4;
 
           const genType = genConfig.generationType;
-          const isGenerating = activeGeneration === genType;
+          let isGenerating;
+ if (isStep4) {
+              isGenerating = environmentGenerationStates[genType]?.status === 'generating';
+ } else {
+              isGenerating = activeGeneration === genType;
+ }
           let hasBeenGenerated = !!imageUrls[genConfig.imageUrlKey];
           // Special case for expressions generation in Step 1:
           // It's considered "generated" if the faceAtlas exists, even ifimageUrlKey is 'expressions'
@@ -949,7 +1088,9 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
                                 (step === 2 && genType === 'foodIcons' && imageUrls.foodIcons) ? imageUrls.foodIcons :
                                 (step === 3 && genType === 'activitiesIcons' && imageUrls.activitiesIcons) ? imageUrls.activitiesIcons : imageUrls[genConfig.imageUrlKey];
 
-          const resultForThisUnit = lastResult.generationType === genType ? lastResult : { status: 'idle' as const, message: '' };
+          const resultForThisUnit = isStep4
+ ? environmentGenerationStates[genType] || { status: 'idle' as const, message: '' }
+ : lastResult.generationType === genType ? lastResult : { status: 'idle' as const, message: '' };
           
           const dependenciesMet = genConfig.dependencies?.every(dep => !!imageUrls[dep as keyof StepImageUrls]) ?? true;
 
