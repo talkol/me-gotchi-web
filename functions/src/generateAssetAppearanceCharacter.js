@@ -58,7 +58,7 @@ export const generateAssetAppearanceCharacterImp = onCall({timeoutSeconds: 300},
           content: [
             {
               type: "input_text",
-              text: `Create a game character based on the likeness of this photo. Focus on the face and make it recognizable as much as possible. The art style is stylized 2D illustration with detailed 3D-like shading and detailed facial features. Highly expressive face maintaining the same age as the original photo. The top of the character's head is visible and not cropped, the character is centered and looking forward directly at the camera, hands dropped to the sides. Zoom to focus on the face and chest only. White background.`,
+              text: `Create a game character based on the likeness of this photo. Focus on the face and make it recognizable as much as possible. The art style is stylized 2D illustration with detailed 3D-like shading and detailed facial features. Highly expressive face maintaining the same age as the original photo. The top of the character's head is visible and not cropped, the character is looking forward directly at the camera, hands dropped to the sides. Zoom to focus on the face and chest only. White background.`,
             },
             {
               type: "input_image",
