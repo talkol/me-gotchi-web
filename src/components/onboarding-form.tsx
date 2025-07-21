@@ -12,6 +12,7 @@ import { getFunctions, httpsCallable, type HttpsCallableError } from "firebase/f
 
 
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -616,6 +617,7 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => (
 export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const { toast } = useToast();
+  const [showExpressionsStyleModal, setShowExpressionsStyleModal] = useState(false);
   
   const [imageUrls, setImageUrls] = useState<StepImageUrls>({});
   const [activeGeneration, setActiveGeneration] = useState<string | null>(null);
@@ -880,8 +882,23 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
     }
   };
   
-  const onGenerate = async (generationType: string) => {
+  const onGenerate = async (generationType: string, expressionsStyle?: string) => {
     const stepConfig = STEPS.find(s => s.id === currentStep);
+
+    // If generating expressions and no style is provided, open the modal
+    if (generationType === 'expressions' && !expressionsStyle) {
+        const isValid = await trigger(stepConfig?.fields as any);
+        if (!isValid) {
+            toast({
+                variant: "destructive",
+                title: "Validation Error",
+                description: "Please fill out all required fields for this step before selecting an expressions style.",
+            });
+            return;
+        }
+        setShowExpressionsStyleModal(true);
+        return; // Stop the generation process for now, wait for modal selection
+    }
     if (!stepConfig) return;
 
     const isValid = await trigger(stepConfig.fields as any);
@@ -929,6 +946,11 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
              }
              // Add the character image URL to the payload
              payload.characterImageUrl = imageUrls.character;
+
+             // Add the selected expressions style if available
+             if (expressionsStyle) {
+                 payload.expressionsStyle = expressionsStyle;
+             }
         }
         
         // If generating food icons, use the foodIcons function
@@ -1107,7 +1129,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
               hasBeenGenerated={hasBeenGenerated}
               isLocked={isLocked}
               onGenerate={onGenerate}
-              backgroundColor={backgroundColor} // Pass the background color
+              backgroundColor={backgroundColor}
               isLandscape={isStep4}
             />
           );
@@ -1176,6 +1198,46 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
             </div>
         </form>
       </Form>
+      <Dialog open={showExpressionsStyleModal} onOpenChange={setShowExpressionsStyleModal}>
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+                <DialogTitle className="font-headline text-2xl">Choose an Expressions Style</DialogTitle>
+                <DialogDescription>Select the style you want for your character's expressions.</DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4 py-4">
+                {["3D", "2.5D", "Anime", "Comic"].map(style => (
+                    <button
+                        key={style}
+                        className="flex flex-col items-center space-y-2 border rounded-md p-2 hover:bg-accent transition-colors"
+                        onClick={() => {
+                            setShowExpressionsStyleModal(false);
+                            // Trigger the generation function with the selected style
+                            onGenerate('expressions', style);
+                        }}
+                    >
+                         {/* Replace with actual placeholder images */}
+                        <div className="w-full aspect-square bg-muted rounded-md flex items-center justify-center overflow-hidden">
+                             {/* Placeholder Image */}
+                             <Image
+                                src={`/placeholders/${style.toLowerCase().replace('.', '')}.png`} // Example placeholder path
+                                alt={`${style} Style Preview`}
+                                width={150}
+                                height={150}
+                                className="object-contain"
+                            />
+                        </div>
+                       <span className="text-sm font-semibold">{style}</span>
+                    </button>
+                ))}
+            </div>
+             <DialogFooter>
+                 {/* Optional: Add a close button */}
+                 {/* <Button variant="outline" onClick={() => setShowExpressionsStyleModal(false)}>
+                     Cancel
+                 </Button> */}
+             </DialogFooter>
+        </DialogContent>
+    </Dialog>
     </div>
   );
 }
