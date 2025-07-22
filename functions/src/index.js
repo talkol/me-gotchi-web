@@ -4,6 +4,7 @@ import {generateAssetAppearanceExpressionsImp} from "./generateAssetAppearanceEx
 import {generateAssetFoodIconsImp} from "./generateAssetFoodIcons.js";
 import { generateAssetActivitiesIconsImp } from "./generateAssetActivitiesIcons.js";
 import { generateAssetEnvironmentImp } from "./generateAssetEnvironment.js";
+import { createInviteCodeImp } from "./createInviteCode.js";
 
 // Initialize Firebase Admin SDK
 initializeApp();
@@ -13,3 +14,4 @@ export const generateAssetAppearanceExpressions = generateAssetAppearanceExpress
 export const generateAssetFoodIcons = generateAssetFoodIconsImp;
 export const generateAssetActivitiesIcons = generateAssetActivitiesIconsImp;
 export const generateAssetEnvironment = generateAssetEnvironmentImp;
+export const createInviteCode = createInviteCodeImp;

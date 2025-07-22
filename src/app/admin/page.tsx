@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from "firebase/auth";
 import { ref, listAll, getDownloadURL, deleteObject, uploadBytes } from "firebase/storage";
-import { auth, storage } from "@/lib/firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { auth, storage, app } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,6 +81,10 @@ export default function AdminPage() {
             // Character image doesn't exist
           }
           
+          // Check if the invite code is unused by looking for firstName
+          const hasFirstName = preferences.firstName && preferences.firstName.trim() !== '';
+          const isUnused = !hasFirstName;
+          
           codesData.push({
             code,
             firstName: preferences.firstName,
@@ -88,7 +93,7 @@ export default function AdminPage() {
                       preferences.environments[1]?.explanation?.trim() && 
                       preferences.environments[2]?.explanation?.trim() && 
                       preferences.environments[3]?.explanation?.trim(),
-            unused: false,
+            unused: isUnused,
             characterUrl
           });
         } catch (error) {
@@ -137,22 +142,30 @@ export default function AdminPage() {
     
     setIsGenerating(true);
     try {
-      // Create a placeholder file to establish the folder
-      const placeholderRef = ref(storage, `${newInviteCode}/.placeholder`);
-      await uploadBytes(placeholderRef, new Uint8Array(0));
+      // Call the Firebase Function to create the invite code with public access
+      const functionsInstance = getFunctions(app, 'us-central1');
+      const createInviteCodeFunction = httpsCallable(functionsInstance, 'createInviteCode');
       
-      toast({
-        title: "Success",
-        description: `Invite code ${newInviteCode} created successfully`,
-      });
+      const result = await createInviteCodeFunction({ inviteCode: newInviteCode });
+      const data = result.data as { success: boolean; message: string; publicUrl: string };
       
-      setNewInviteCode("");
-      loadInviteCodes(); // Refresh the list
-    } catch (error) {
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: data.message,
+        });
+        
+        setNewInviteCode("");
+        loadInviteCodes(); // Refresh the list
+      } else {
+        throw new Error(data.message || "Failed to create invite code");
+      }
+    } catch (error: any) {
       console.error("Error creating invite code:", error);
+      const errorMessage = error.message || "Failed to create invite code";
       toast({
         title: "Error",
-        description: "Failed to create invite code",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
