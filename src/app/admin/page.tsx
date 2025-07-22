@@ -390,7 +390,7 @@ export default function AdminPage() {
                           />
                         ) : (
                           <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
-                            <span className="text-xs text-muted-foreground">No image</span>
+                            <span className="text-xs text-muted-foreground">none</span>
                           </div>
                         )}
                       </TableCell>
