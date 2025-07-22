@@ -39,9 +39,9 @@ export function InviteForm() {
   return (
     <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-sm border-primary/20">
       <CardHeader>
-        <CardTitle className="font-headline text-2xl">Enter Invite Code</CardTitle>
+        <CardTitle className="font-medium text-2xl">Enter Invite Code</CardTitle>
         <CardDescription>
-          Please enter your invite code to get started.
+          An invite code is required to get started.
         </CardDescription>
       </CardHeader>
       <CardContent>

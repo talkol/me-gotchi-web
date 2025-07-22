@@ -1,7 +1,7 @@
 "use client";
 
 import { InviteForm } from "@/components/invite-form";
-import { Heart, Sparkles, Bot } from "lucide-react";
+import { Bot } from "lucide-react";
 
 export default function InvitePage() {
   return (

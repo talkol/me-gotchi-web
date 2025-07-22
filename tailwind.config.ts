@@ -17,8 +17,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['Fredoka', 'sans-serif'],
-        headline: ['Fredoka', 'sans-serif'],
+        body: ['Nunito', 'sans-serif'],
+        headline: ['Nunito', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
