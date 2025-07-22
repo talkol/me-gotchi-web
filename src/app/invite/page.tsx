@@ -1,10 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { InviteForm } from "@/components/invite-form";
 import { Heart, Sparkles, Bot } from "lucide-react";
-import Link from "next/link";
 
-export default function Home() {
+export default function InvitePage() {
   return (
     <div className="dark">
       <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
@@ -16,28 +15,17 @@ export default function Home() {
             </div>
 
             <h1 className="font-headline text-5xl md:text-7xl font-bold text-foreground">
-                Me-gotchi
+                Me-gotchi Setup
             </h1>
-            <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
-                A personalized digital companion that grows and evolves with you. 
-                Create your own unique virtual pet and embark on a journey of care, 
-                activities, and companionship.
+            <p className="mt-4 max-w-xl text-lg text-muted-foreground">
+                Welcome! Enter your exclusive invite code to begin your journey and create a personalized digital companion.
             </p>
-            
-            <div className="mt-8 flex flex-col sm:flex-row gap-4">
-              <Button asChild size="lg" className="bg-primary hover:bg-primary/90">
-                <Link href="/invite">
-                  Get Started
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="/admin">
-                  Admin Panel
-                </Link>
-              </Button>
-            </div>
+        </div>
+
+        <div className="z-10 mt-10 w-full max-w-md">
+          <InviteForm />
         </div>
       </main>
     </div>
   );
-}
+} 
