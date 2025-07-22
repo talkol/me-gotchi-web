@@ -1205,7 +1205,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
                 <DialogDescription>Select the style you want for your character's expressions.</DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-4 py-4">
-                {["3D", "2.5D", "Anime", "Comic"].map(style => (
+                {["Kawaii", "Cartoon", "Cel-Shaded", "Semi-Realistic"].map(style => (
                     <button
                         key={style}
                         className="flex flex-col items-center space-y-2 border rounded-md p-2 hover:bg-accent transition-colors"
@@ -1217,9 +1217,9 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
                     >
                          {/* Replace with actual placeholder images */}
                         <div className="w-full aspect-square bg-muted rounded-md flex items-center justify-center overflow-hidden">
-                             {/* Placeholder Image */}
+                             {/* Style Preview Image */}
                              <Image
-                                src={`/placeholders/${style.toLowerCase().replace('.', '')}.png`} // Example placeholder path
+                                src={`/character-styles/style${["Kawaii", "Cartoon", "Cel-Shaded", "Semi-Realistic"].indexOf(style) + 1}.png`}
                                 alt={`${style} Style Preview`}
                                 width={150}
                                 height={150}

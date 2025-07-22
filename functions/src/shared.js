@@ -45,6 +45,9 @@ export const GenerationRequestSchema = z.object({
     
     environmentNumber: z.number().min(1).max(4).optional(),
     environments: z.array(EnvironmentItemSchema).optional(),
+    
+    // Generation-specific fields
+    expressionsStyle: z.enum(["Kawaii", "Cartoon", "Cel-Shaded", "Semi-Realistic"]).optional(),
   });
 
 /**

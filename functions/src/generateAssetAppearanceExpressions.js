@@ -24,6 +24,12 @@ export const generateAssetAppearanceExpressionsImp = onCall({timeoutSeconds: 300
         "The character image URL is required to generate expressions.",
       );
     }
+    if (!request.data.expressionsStyle) {
+      throw new HttpsError(
+        "invalid-argument",
+        "The expressionsStyle is required to generate expressions.",
+      );
+    }
     if (!request.data.inviteCode) {
       throw new HttpsError("invalid-argument", "Invite code is required.");
     }
@@ -48,7 +54,91 @@ export const generateAssetAppearanceExpressionsImp = onCall({timeoutSeconds: 300
       apiKey: openAiApiKey.value(),
     });
     logger.info("About to call OpenAI for expressions generation");
-  
+
+    const sharedPromptPrefix = `Create a square 1:1 image with transparent background and divide it into 9 equal squares (3x3 grid).`;
+
+    // Define prompts for each style
+    const kawaiiPrompt = `In each square reimagine the character from the attached image in a different expressive pose. Render the character in a highly detailed “Sticker Pop” art style inspired by Sanrio, LINE Friends, and modern kawaii design, with a polished, collectible feel.
+Style Guidelines:
+    * Use bold clean outlines, soft gradient shading, smooth curves
+    * Put a thick white sticker-style border around each character
+    * Preserve recognizable character features from the original image
+    * Make the expressions vivid and emotionally distinct, with blushing cheeks, and subtle highlights
+    * When eyes are open, make them large and expressive, with a reflection on the eyeball`;
+
+    const cartoonPrompt = `In each square reimagine the character from the attached image in a different expressive pose. Render the character in a cartoon caricature style that emphasizes and exaggerates their most recognizable features. This should be a playful, stylized reinterpretation that pushes proportions while still being clearly based on the original subject.
+Style Guidelines:
+    * Big expressive eyes, with exaggerated size or shape based on the original
+    * Emphasize defining features such as eyebrows, lips, nose, ears, or jawline
+    * Use a larger head-to-body ratio for charm and emotional readability
+    * Hair should retain its original shape and volume, but can be stylized or exaggerated
+    * Mouth and brows should shift dramatically between emotions to enhance readability
+    * Use bold outlines, vibrant color palettes, and smooth cel shading
+
+Artistic Details:
+    * Use simple but polished cartoon rendering (think modern animated TV characters or stylized mobile game avatars)
+    * Keep light source consistent with soft, cell-shaded shadows and highlights
+    * Add blush, shine, or slight freckles to enhance personality
+    * Clothing can be simplified but should retain basic patterns and color identity`;
+
+    const semiRealisticPrompt = `In each square put the face of the input character with a different varied facial expression and an art style that is stylized 2D with 3D cell shading.`;
+
+    const celShadedPrompt = `In each square put the face of the input character with a different varied facial expression. Render the character in a stylized 2D illustration with enhanced cel shading and slight realism. The image should remain charming and animated in feel, but incorporate just enough real-world detail to bring out personality and resemblance.
+Maintain strong likeness to the source, preserving the character's:
+    * Facial structure and features
+    * Hairstyle and hair texture
+    * Skin tone and expression
+
+Use clean linework and layered cel shading, but with:
+    * Softer transitions in shadow zones
+    * More realistic lighting falloff, especially around cheeks, nose, and eyes
+    * Slight gradient or tonal variation in skin and lips for natural warmth
+
+Add subtle enhancements such as:
+    * Defined but stylized eyelashes and irises
+    * Gentle shine on eyes and lips
+    * Very soft nose shading and cheek blush
+    * Layered hair with suggestion of individual locks`;
+
+    const sharedPromptSuffix = `
+    - Top row:
+      - Big smile with mouth closed, eyes open
+      - Bigger happier smile with mouth slightly open, eyes open
+      - Huge laugh with mouth open, eyes closed
+    - Middle row:
+      - No smile, eyes looking towards top-left, bored
+      - No smile, eyes looking straight
+      - No smile, eyes looking towards bottom-right, wondering
+    - Bottom row:
+      - Big sad frown, eyes open
+      - Huge angry frown, eyes open
+      - Huge frown crying, eyes closed and tears
+    
+    Make sure all facial expressions are different. Do not put any separator lines between frames. Make sure the top of the head is fully visible in each frame and that there is no overlap between frames. Background must be transparent.`
+
+    // Select the appropriate prompt based on the expressions style
+    let selectedPrompt = sharedPromptPrefix + "\n\n";
+    switch (data.expressionsStyle) {
+      case "Kawaii":
+        selectedPrompt += kawaiiPrompt;
+        break;
+      case "Cartoon":
+        selectedPrompt += cartoonPrompt;
+        break;
+      case "Cel-Shaded":
+        selectedPrompt += celShadedPrompt;
+        break;
+      case "Semi-Realistic":
+        selectedPrompt += semiRealisticPrompt;
+        break;
+      default:
+        throw new HttpsError(
+          "invalid-argument",
+          "Unknown expressionsStyle given: " + data.expressionsStyle,
+        );
+    }
+    selectedPrompt += "\n" + sharedPromptSuffix;
+
     // Gemini - NEVER EDIT CODE STARTING HERE!
     const response = await openai.responses.create({
       model: "gpt-4o",
@@ -58,7 +148,7 @@ export const generateAssetAppearanceExpressionsImp = onCall({timeoutSeconds: 300
           content: [
             {
               type: "input_text",
-              text: `Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put the face of the input character with a different varied facial expression and an art style that is stylized 2D with 3D cell shading. Top row: big smile with mouth closed, eyes open; bigger happier smile with mouth slightly open, eyes open; huge laugh with mouth open, eyes closed. Middle row: no smile, eyes looking top left; no smile, eyes looking straight; no smile, eyes looking bottom right. Bottom row: big sad frown, eyes open; huge angry frown, eyes open; huge frown crying, eyes closed and tears. Make sure all facial expressions are different. Do not put any separator lines between frames. Make sure the top of the head is fully visible in each frame and that there is no overlap between frames. Background must be transparent.`,
+              text: selectedPrompt,
             },
             {
               type: "input_image",
