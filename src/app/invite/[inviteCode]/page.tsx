@@ -1,9 +1,10 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 export default function OnboardingPage({
   params: paramsPromise,
@@ -11,6 +12,99 @@ export default function OnboardingPage({
   params: Promise<{ inviteCode: string }>;
 }) {
   const params = React.use(paramsPromise);
+  const [isValidating, setIsValidating] = useState(true);
+  const [isValid, setIsValid] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const validateInviteCode = async () => {
+      try {
+        setIsValidating(true);
+        setError(null);
+        
+        // Try to fetch the preferences.json file for this invite code
+        const preferencesUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(params.inviteCode)}/preferences.json`;
+        const response = await fetch(preferencesUrl);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const preferences = await response.json();
+        
+        // Check if the preferences file has the expected structure
+        if (!preferences.inviteCode || preferences.inviteCode !== params.inviteCode) {
+          throw new Error("Invalid preferences file structure");
+        }
+        
+        setIsValid(true);
+      } catch (error) {
+        console.error("Error validating invite code:", error);
+        setError("Invalid or expired invite code. Please check the code and try again.");
+        setIsValid(false);
+      } finally {
+        setIsValidating(false);
+      }
+    };
+
+    validateInviteCode();
+  }, [params.inviteCode]);
+
+  if (isValidating) {
+    return (
+      <main className="container mx-auto py-8 px-4">
+        <div className="absolute top-4 left-4">
+          <Button asChild variant="ghost">
+            <Link href="/">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Link>
+          </Button>
+        </div>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Validating invite code...</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!isValid) {
+    return (
+      <main className="container mx-auto py-8 px-4">
+        <div className="absolute top-4 left-4">
+          <Button asChild variant="ghost">
+            <Link href="/">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Link>
+          </Button>
+        </div>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <AlertCircle className="h-6 w-6 text-destructive" />
+              </div>
+              <CardTitle className="text-xl">Invalid Invite Code</CardTitle>
+              <CardDescription>
+                {error || "The invite code you entered is not valid."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <Button asChild className="w-full">
+                <Link href="/">
+                  Return to Home
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="container mx-auto py-8 px-4">
