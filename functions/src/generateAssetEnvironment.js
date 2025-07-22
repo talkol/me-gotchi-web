@@ -1,7 +1,7 @@
 import {defineString} from 'firebase-functions/params';
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import OpenAI from "openai";
-import {GenerationRequestSchema, savePreferences} from "./shared.js";
+import {GenerationRequestSchema, savePreferences, validateInviteCode} from "./shared.js";
 import { getStorage } from "firebase-admin/storage";
 import * as logger from "firebase-functions/logger";
 
@@ -36,6 +36,9 @@ export const generateAssetEnvironmentImp = onCall({timeoutSeconds: 300}, async (
     }
     const data = validationResult.data;
     const environment = data.environments[data.environmentNumber - 1].explanation;
+
+    // Validate that the invite code exists
+    await validateInviteCode(data.inviteCode);
     
     // Define the OpenAI API key parameter
     const openAiApiKey = defineString('OPENAI_API_KEY');

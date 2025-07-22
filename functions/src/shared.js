@@ -1,6 +1,7 @@
 import * as logger from "firebase-functions/logger";
 import {getStorage} from "firebase-admin/storage";
 import {z} from "zod";
+import {HttpsError} from "firebase-functions/v2/https";
 
 export const FoodItemSchema = z.object({
     name: z.string().max(11),
@@ -49,6 +50,36 @@ export const GenerationRequestSchema = z.object({
     // Generation-specific fields
     expressionsStyle: z.enum(["Kawaii", "Cartoon", "Cel-Shaded", "Semi-Realistic"]).optional(),
   });
+
+/**
+ * Validates that an invite code exists in the storage bucket.
+ * This function checks if a preferences.json file exists for the given invite code.
+ * 
+ * @param {string} inviteCode - The invite code to validate.
+ * @returns {Promise<void>} - A promise that resolves if the invite code is valid, or throws HttpsError if invalid.
+ * @throws {HttpsError} - Throws HttpsError if invite code doesn't exist or is invalid.
+ */
+export async function validateInviteCode(inviteCode) {
+  if (!inviteCode) {
+    throw new HttpsError("invalid-argument", "Invite code is required.");
+  }
+  
+  const bucket = getStorage().bucket();
+  const preferencesFile = bucket.file(`${inviteCode}/preferences.json`);
+  
+  try {
+    const [exists] = await preferencesFile.exists();
+    if (!exists) {
+      throw new HttpsError("not-found", "Invalid invite code. Please use a valid invite code.");
+    }
+  } catch (error) {
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    logger.error(`Error validating invite code ${inviteCode}:`, error);
+    throw new HttpsError("internal", "Error validating invite code.");
+  }
+}
 
 /**
  * Saves user preferences to a JSON file in Google Cloud Storage.

@@ -1,7 +1,7 @@
 import {defineString} from 'firebase-functions/params';
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import OpenAI from "openai";
-import {GenerationRequestSchema, savePreferences} from "./shared.js";
+import {GenerationRequestSchema, savePreferences, validateInviteCode} from "./shared.js";
 import { getStorage } from "firebase-admin/storage";
 import * as logger from "firebase-functions/logger";
 
@@ -36,6 +36,9 @@ export const generateAssetAppearanceCharacterImp = onCall({timeoutSeconds: 300},
         "The function must be called with a valid payload.", validationResult.error.flatten());
     }
     const data = validationResult.data;
+    
+    // Validate that the invite code exists
+    await validateInviteCode(data.inviteCode);
     
     // Define the OpenAI API key parameter
     const openAiApiKey = defineString('OPENAI_API_KEY');
