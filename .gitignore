@@ -16,6 +16,7 @@
 # firebase
 /firebase-debug.log
 /firebase-debug.*.log
+.firebase/
 
 # environment variables
 .env.local
