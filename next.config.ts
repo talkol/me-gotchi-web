@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Static export for Firebase Hosting
+  output: 'export',
+  trailingSlash: true,
   images: {
     unoptimized: true,
     remotePatterns: [

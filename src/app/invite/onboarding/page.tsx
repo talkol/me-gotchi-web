@@ -6,24 +6,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 
-export default function OnboardingPage({
-  params: paramsPromise,
-}: {
-  params: Promise<{ inviteCode: string }>;
-}) {
-  const params = React.use(paramsPromise);
+export default function OnboardingPage() {
+  const [inviteCode, setInviteCode] = useState<string>("");
   const [isValidating, setIsValidating] = useState(true);
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Get invite code from URL query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeFromQuery = urlParams.get('code');
+    
+    if (codeFromQuery) {
+      setInviteCode(codeFromQuery);
+    } else {
+      setError("No invite code provided");
+      setIsValidating(false);
+    }
+  }, []);
+
+  useEffect(() => {
     const validateInviteCode = async () => {
+      if (!inviteCode) return;
+      
       try {
         setIsValidating(true);
         setError(null);
         
         // Try to fetch the preferences.json file for this invite code
-        const preferencesUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(params.inviteCode)}/preferences.json`;
+        const preferencesUrl = `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(inviteCode)}/preferences.json`;
         const response = await fetch(preferencesUrl);
         
         if (!response.ok) {
@@ -33,7 +44,7 @@ export default function OnboardingPage({
         const preferences = await response.json();
         
         // Check if the preferences file has the expected structure
-        if (!preferences.inviteCode || preferences.inviteCode !== params.inviteCode) {
+        if (!preferences.inviteCode || preferences.inviteCode !== inviteCode) {
           throw new Error("Invalid preferences file structure");
         }
         
@@ -47,8 +58,10 @@ export default function OnboardingPage({
       }
     };
 
-    validateInviteCode();
-  }, [params.inviteCode]);
+    if (inviteCode) {
+      validateInviteCode();
+    }
+  }, [inviteCode]);
 
   if (isValidating) {
     return (
@@ -126,13 +139,13 @@ export default function OnboardingPage({
         <div className="inline-block bg-muted text-sm rounded-full px-4 py-1 mt-4">
           Invite Code:{" "}
           <span className="font-bold text-foreground">
-            {params.inviteCode}
+            {inviteCode}
           </span>
         </div>
       </div>
       <div className="mt-8">
-        <OnboardingForm inviteCode={params.inviteCode} />
+        <OnboardingForm inviteCode={inviteCode} />
       </div>
     </main>
   );
-}
+} 

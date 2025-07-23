@@ -1,6 +1,18 @@
-
 {
   "projects": {
     "default": "me-gotchi"
-  }
+  },
+  "targets": {
+    "me-gotchi": {
+      "hosting": {
+        "main": [
+          "me-gotchi"
+        ],
+        "custom-domain": [
+          "me-gotchi-com"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

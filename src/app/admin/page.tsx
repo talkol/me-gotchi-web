@@ -17,6 +17,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, Trash2, Plus, LogOut, User as UserIcon, RefreshCw } from "lucide-react";
 import Image from "next/image";
 
+// Client-side only rendering
+export const ssr = false;
+
 interface InviteCodeData {
   code: string;
   firstName?: string;
@@ -277,7 +280,7 @@ export default function AdminPage() {
   };
 
   const viewInviteCode = (code: string) => {
-    router.push(`/invite/${code}`);
+    router.push(`/invite/onboarding/?code=${encodeURIComponent(code)}`);
   };
 
   const handleSignOut = async () => {

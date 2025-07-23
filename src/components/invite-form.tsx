@@ -33,7 +33,7 @@ export function InviteForm() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    router.push(`/invite/${values.inviteCode}`);
+    router.push(`/invite/onboarding/?code=${encodeURIComponent(values.inviteCode)}`);
   }
 
   return (
