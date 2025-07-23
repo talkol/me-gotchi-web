@@ -263,7 +263,7 @@ const GenerationUnit = ({
         <Button
             type="button"
             size="lg"
-            className="w-full font-bold"
+            className="w-full font-bold text-base"
             disabled={isGenerating || isLocked}
             onClick={() => { if (!isLocked) onGenerate(generationType); }}
         >
@@ -1174,24 +1174,24 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
             </div>
 
             <div className={`mt-8 flex items-center ${currentStep === 5 ? 'justify-center' : 'justify-between'}`}>
-                <Button type="button" variant="outline" onClick={handlePrevious} className={currentStep === 1 || currentStep === 5 ? 'invisible' : 'visible'}>
+                <Button type="button" variant="outline" onClick={handlePrevious} className={`text-base ${currentStep === 1 || currentStep === 5 ? 'invisible' : 'visible'}`}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                 </Button>
 
                 {currentStep === 5 && (
-                     <Button type="button" variant="outline" onClick={handlePrevious}>
+                     <Button type="button" variant="outline" onClick={handlePrevious} className="text-base">
                         <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                     </Button>
                 )}
                 
                 {currentStep < 4 && (
-                    <Button type="button" size="lg" onClick={handleNext} disabled={!isStepComplete || !!activeGeneration}>
+                    <Button type="button" size="lg" onClick={handleNext} disabled={!isStepComplete || !!activeGeneration} className="text-base">
                         Next Step <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 )}
 
                 {currentStep === 4 && (
-                     <Button type="button" size="lg" onClick={handleNext} disabled={!isStepComplete || !!activeGeneration}>
+                     <Button type="button" size="lg" onClick={handleNext} disabled={!isStepComplete || !!activeGeneration} className="text-base">
                         Done <CheckCircle className="ml-2 h-4 w-4" />
                     </Button>
                 )}
