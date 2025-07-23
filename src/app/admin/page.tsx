@@ -313,17 +313,17 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             <p className="text-muted-foreground">Manage invite codes and user data</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <UserIcon className="w-4 h-4" />
               {user.email}
             </div>
-            <Button variant="outline" onClick={handleSignOut}>
+            <Button variant="outline" onClick={handleSignOut} className="w-full md:w-auto">
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>
@@ -381,41 +381,119 @@ export default function AdminPage() {
                 No invite codes found
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Character</TableHead>
-                    <TableHead>First Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Character</TableHead>
+                        <TableHead>First Name</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {inviteCodes.map((inviteCode) => (
+                        <TableRow key={inviteCode.code}>
+                          <TableCell className="font-mono">{inviteCode.code}</TableCell>
+                          <TableCell>
+                            {inviteCode.characterUrl ? (
+                              <Image
+                                src={inviteCode.characterUrl}
+                                alt="Character"
+                                width={40}
+                                height={40}
+                                className="rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                                <span className="text-xs text-muted-foreground">none</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {inviteCode.firstName || (
+                              <span className="text-muted-foreground">Not started</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              inviteCode.unused ? "outline" : 
+                              inviteCode.completed ? "default" : "secondary"
+                            }>
+                              {inviteCode.unused ? "Unused" : 
+                               inviteCode.completed ? "Completed" : "In Progress"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => viewInviteCode(inviteCode.code)}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => regenerateInviteCode(inviteCode.code)}
+                                disabled={isRegenerating === inviteCode.code}
+                              >
+                                <RefreshCw className={`w-4 h-4 mr-1 ${isRegenerating === inviteCode.code ? 'animate-spin' : ''}`} />
+                                {isRegenerating === inviteCode.code ? "Regenerating..." : "Regenerate Code"}
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={isDeleting === inviteCode.code}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-1" />
+                                    {isDeleting === inviteCode.code ? "Deleting..." : "Delete"}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Invite Code</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete invite code "{inviteCode.code}"? 
+                                      This will permanently remove all associated data and cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteInviteCode(inviteCode.code)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-4">
                   {inviteCodes.map((inviteCode) => (
-                    <TableRow key={inviteCode.code}>
-                      <TableCell className="font-mono">{inviteCode.code}</TableCell>
-                      <TableCell>
-                        {inviteCode.characterUrl ? (
-                          <Image
-                            src={inviteCode.characterUrl}
-                            alt="Character"
-                            width={40}
-                            height={40}
-                            className="rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
-                            <span className="text-xs text-muted-foreground">none</span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {inviteCode.firstName || (
-                          <span className="text-muted-foreground">Not started</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
+                    <div key={inviteCode.code} className="border rounded-lg p-4 space-y-3">
+                      {/* Row 1: Code and Status */}
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-muted-foreground">Code</div>
+                          <div className="font-mono text-base">{inviteCode.code}</div>
+                        </div>
                         <Badge variant={
                           inviteCode.unused ? "outline" : 
                           inviteCode.completed ? "default" : "secondary"
@@ -423,37 +501,68 @@ export default function AdminPage() {
                           {inviteCode.unused ? "Unused" : 
                            inviteCode.completed ? "Completed" : "In Progress"}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => viewInviteCode(inviteCode.code)}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => regenerateInviteCode(inviteCode.code)}
-                            disabled={isRegenerating === inviteCode.code}
-                          >
-                            <RefreshCw className={`w-4 h-4 mr-1 ${isRegenerating === inviteCode.code ? 'animate-spin' : ''}`} />
-                            {isRegenerating === inviteCode.code ? "Regenerating..." : "Regenerate Code"}
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                disabled={isDeleting === inviteCode.code}
-                              >
-                                <Trash2 className="w-4 h-4 mr-1" />
-                                {isDeleting === inviteCode.code ? "Deleting..." : "Delete"}
-                              </Button>
-                            </AlertDialogTrigger>
+                      </div>
+
+                                             {/* Row 2: Character and First Name */}
+                       <div className="flex items-center justify-between">
+                         <div className="flex-1">
+                           <div className="text-sm font-medium text-muted-foreground mb-1">Character</div>
+                           {inviteCode.characterUrl ? (
+                             <Image
+                               src={inviteCode.characterUrl}
+                               alt="Character"
+                               width={40}
+                               height={40}
+                               className="rounded-full object-cover"
+                             />
+                           ) : (
+                             <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                               <span className="text-xs text-muted-foreground">none</span>
+                             </div>
+                           )}
+                         </div>
+                         <div className="flex-1 text-right">
+                           <div className="text-sm font-medium text-muted-foreground">First Name</div>
+                           <div className="text-base">
+                             {inviteCode.firstName || (
+                               <span className="text-muted-foreground">Not started</span>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+
+                      {/* Row 3: Actions */}
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-2">Actions</div>
+                                                 <div className="flex flex-wrap gap-2">
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             onClick={() => viewInviteCode(inviteCode.code)}
+                             className="flex-1 min-w-0"
+                           >
+                             View
+                           </Button>
+                           <Button
+                             size="sm"
+                             variant="secondary"
+                             onClick={() => regenerateInviteCode(inviteCode.code)}
+                             disabled={isRegenerating === inviteCode.code}
+                             className="flex-1 min-w-0"
+                           >
+                             {isRegenerating === inviteCode.code ? "Regenerating..." : "Regenerate"}
+                           </Button>
+                           <AlertDialog>
+                             <AlertDialogTrigger asChild>
+                               <Button
+                                 size="sm"
+                                 variant="destructive"
+                                 disabled={isDeleting === inviteCode.code}
+                                 className="flex-1 min-w-0"
+                               >
+                                 {isDeleting === inviteCode.code ? "Deleting..." : "Delete"}
+                               </Button>
+                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Invite Code</AlertDialogTitle>
@@ -474,11 +583,11 @@ export default function AdminPage() {
                             </AlertDialogContent>
                           </AlertDialog>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

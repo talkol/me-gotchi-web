@@ -27,7 +27,7 @@ export default function Home() {
       <section className="bg-teal-400 py-0 px-6">
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-center justify-between">
           <div className="lg:w-1/2 mb-10 lg:mb-0">
-            <h1 className="text-5xl lg:text-7xl font-bold text-purple-900 mb-8">
+            <h1 className="text-5xl lg:text-7xl font-bold text-purple-900 my-8">
               Create your own Tamagotchi
             </h1>
             <p className="text-2xl text-purple-900 mb-8">
@@ -44,7 +44,7 @@ export default function Home() {
               <img 
                 src="/logo.png" 
                 alt="Me-gotchi Logo" 
-                className="w-96 h-[28rem] object-contain"
+                className="w-96 h-[28rem] object-contain md:pt-5"
               />
             </div>
           </div>
@@ -84,11 +84,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Examples Section */}
       <section className="py-20 px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-center">
-            <div className="grid grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-16 px-4 px-28">
               <img 
                 src="/example1.png" 
                 alt="Me-gotchi Example 1" 
