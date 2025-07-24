@@ -88,7 +88,7 @@ export default function Home() {
       <section className="py-20 px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-center">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-16 px-4 px-28">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-16 px-28">
               <img 
                 src="/example1.png" 
                 alt="Me-gotchi Example 1" 
