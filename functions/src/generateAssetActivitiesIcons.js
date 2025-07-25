@@ -86,7 +86,7 @@ export const generateAssetActivitiesIconsImp = onCall({timeoutSeconds: 300}, asy
           content: [
             {
               type: "input_text",
-              text: `Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put an illustration for a game asset in the art style of Super Mario as an icon with simple transparent background. Top row: ${item(data.likedFunActivities[0])}; ${item(data.likedFunActivities[1])}; ${item(data.likedFunActivities[2])}. Middle row: ${item(data.dislikedFunActivities[0])}; ${item(data.dislikedFunActivities[1])}; ${item(data.likedExerciseActivities[0])}. Bottom row: ${item(data.likedExerciseActivities[1])}; ${item(data.dislikedExerciseActivities[0])}; bed.`,
+              text: `Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put an illustration for a game asset in the art style of Super Mario as an icon with simple transparent background (without any Mario characters). Top row: ${item(data.likedFunActivities[0])}; ${item(data.likedFunActivities[1])}; ${item(data.likedFunActivities[2])}. Middle row: ${item(data.dislikedFunActivities[0])}; ${item(data.dislikedFunActivities[1])}; ${item(data.likedExerciseActivities[0])}. Bottom row: ${item(data.likedExerciseActivities[1])}; ${item(data.dislikedExerciseActivities[0])}; bed.`,
             },
           ],
         },

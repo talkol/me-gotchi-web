@@ -354,7 +354,7 @@ const PreferenceItem = ({
                 <Checkbox checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
               <FormLabel className="text-sm font-medium leading-none">
-                Add explanation
+                Add explicit description of the icon
               </FormLabel>
             </FormItem>
           )}
@@ -511,7 +511,7 @@ const Step2 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
          <div className="mt-6">
             <FormField control={control} name="foodBackgroundColor" render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="text-base font-semibold">Food Background Color</FormLabel>
+                    <FormLabel className="text-base font-semibold">Food Icons Background Color</FormLabel>
                     <FormControl><ColorPickerInput field={field} textColor="#000000" /></FormControl>
                 </FormItem>
             )} /></div>
@@ -553,7 +553,7 @@ const Step3 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
         <div className="mt-6">
             <FormField control={control} name="activitiesBackgroundColor" render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="text-base font-semibold">Activities Background Color</FormLabel>
+                    <FormLabel className="text-base font-semibold">Activities Icons Background Color</FormLabel>
                     <FormControl><ColorPickerInput field={field} textColor="#000000" /></FormControl>
                 </FormItem>
             )} /></div>

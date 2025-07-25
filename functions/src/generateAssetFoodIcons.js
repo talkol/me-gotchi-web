@@ -86,7 +86,7 @@ export const generateAssetFoodIconsImp = onCall({timeoutSeconds: 300}, async (re
           content: [
             {
               type: "input_text",
-              text: `Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put an illustration for a game asset in the art style of Super Mario as an icon with simple transparent background. Top row: ${item(data.likedFoods[0])}; ${item(data.likedFoods[1])}; ${item(data.likedFoods[2])}. Middle row: ${item(data.dislikedFoods[0])}; ${item(data.dislikedFoods[1])}; ${item(data.dislikedFoods[2])}. Bottom row: ${item(data.likedDrinks[0])}; ${item(data.likedDrinks[1])}; ${item(data.dislikedDrinks[0])}.`,
+              text: `Create a square 1:1 image with transparent background and divide it into 9 equal squares. In each square put an illustration for a game asset in the art style of Super Mario as an icon with simple transparent background (without any Mario characters). Top row: ${item(data.likedFoods[0])}; ${item(data.likedFoods[1])}; ${item(data.likedFoods[2])}. Middle row: ${item(data.dislikedFoods[0])}; ${item(data.dislikedFoods[1])}; ${item(data.dislikedFoods[2])}. Bottom row: ${item(data.likedDrinks[0])}; ${item(data.likedDrinks[1])}; ${item(data.dislikedDrinks[0])}.`,
             },
           ],
         },

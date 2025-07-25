@@ -58,14 +58,15 @@ export const generateAssetAppearanceExpressionsImp = onCall({timeoutSeconds: 300
     });
     logger.info("About to call OpenAI for expressions generation");
 
-    const sharedPromptPrefix = `Create a square 1:1 image with transparent background and divide it into 9 equal squares (3x3 grid).`;
+    const sharedPromptPrefix = `Create a square 1:1 image with transparent background and divide it into 9 equal square tiles (3x3 grid).`;
 
     // Define prompts for each style
     const kawaiiPrompt = `In each square reimagine the character from the attached image in a different expressive pose. Render the character in a highly detailed “Sticker Pop” art style inspired by Sanrio, LINE Friends, and modern kawaii design, with a polished, collectible feel.
 Style Guidelines:
     * Use bold clean outlines, soft gradient shading, smooth curves
-    * Put a thick white sticker-style border around each character
     * Preserve recognizable character features from the original image
+    * Emphasize defining facial features such as nose or jawline
+    * Use a head shape resembling the original character and a similar skin tone color
     * Make the expressions vivid and emotionally distinct, with blushing cheeks, and subtle highlights
     * When eyes are open, make them large and expressive, with a reflection on the eyeball`;
 
@@ -117,7 +118,7 @@ Add subtle enhancements such as:
       - Huge angry frown, eyes open
       - Huge frown crying, eyes closed and tears
     
-    Make sure all facial expressions are different. Do not put any separator lines between frames. Make sure the top of the head is fully visible in each frame and that there is no overlap between frames. Background must be transparent.`
+    Make sure all facial expressions are different. Do not put any separator lines between tiles. Make sure the top of the head is fully visible in each tile and that there is no overlap between tiles. Background must be transparent. All tiles must be 1:1 squares.`
 
     // Select the appropriate prompt based on the expressions style
     let selectedPrompt = sharedPromptPrefix + "\n\n";
