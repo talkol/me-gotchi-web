@@ -696,24 +696,14 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => {
                             )}
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            <Button 
-                                onClick={() => window.open(apkUrl, '_blank')}
-                                size="lg"
-                                className="min-w-[200px] bg-green-600 hover:bg-green-700 font-bold text-base"
-                            >
-                                <Download className="mr-2 h-4 w-4" />
-                                Download APK
-                            </Button>
-                            <Button 
-                                onClick={generateCustomApk}
-                                variant="outline"
-                                size="sm"
-                            >
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Regenerate APK
-                            </Button>
-                        </div>
+                        <Button 
+                            onClick={generateCustomApk}
+                            size="lg"
+                            className="min-w-[200px] font-bold text-base"
+                        >
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Regenerate APK
+                        </Button>
                     )}
                     
                     {error && (
