@@ -17,7 +17,11 @@ const CustomizeApkRequestSchema = z.object({
  * @param {Object} request - Firebase function request
  * @returns {Promise<Object>} - Returns the URL of the customized APK
  */
-async function generateCustomizedApkImp(request) {
+export const generateCustomizedApkImp = onCall({
+  maxInstances: 10,
+  timeoutSeconds: 540, // 9 minutes
+  memory: "2GiB",
+}, async (request) => {
   const {data, context} = request;
   let tempDir = null;
   
@@ -143,17 +147,10 @@ async function generateCustomizedApkImp(request) {
     // Clean up temporary files using apkUtils
     await cleanupTempDirectory(tempDir);
   }
-}
+});
 
 // Helper function to read file
 async function readFile(filePath) {
   const fs = require("fs");
   return fs.promises.readFile(filePath);
-}
-
-// Export the cloud function
-export const generateCustomizedApkImp = onCall({
-  maxInstances: 10,
-  timeoutSeconds: 540, // 9 minutes
-  memory: "2GiB",
-}, generateCustomizedApkImp); 
+} 
