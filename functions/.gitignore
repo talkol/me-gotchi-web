@@ -14,3 +14,11 @@ dist/
 
 # Ignore test temporary files
 test/temp/
+
+# Ignore keystore files
+*.keystore
+src/release.keystore
+
+# Ignore APK files in src directory (bundled with functions)
+src/*.apk
+src/Me-gotchi.apk
