@@ -19,22 +19,49 @@ export async function checkApksignerAvailability() {
   try {
     // Check if we're in a local development environment (Mac)
     if (process.platform === 'darwin') {
-      // Try to find apksigner in common Mac installation paths
-      const possiblePaths = [
-        '/opt/homebrew/share/android-commandlinetools/build-tools/34.0.0/apksigner',
-        '/opt/homebrew/share/android-commandlinetools/build-tools/30.0.3/apksigner',
-        '/usr/local/share/android-commandlinetools/build-tools/34.0.0/apksigner',
-        '/usr/local/share/android-commandlinetools/build-tools/30.0.3/apksigner'
+      // Try to find apksigner dynamically by scanning build-tools directories
+      const possibleBasePaths = [
+        '/opt/homebrew/share/android-commandlinetools/build-tools',
+        '/usr/local/share/android-commandlinetools/build-tools'
       ];
       
-      for (const path of possiblePaths) {
-        if (existsSync(path)) {
-          // Test if the apksigner works
+      for (const basePath of possibleBasePaths) {
+        if (existsSync(basePath)) {
           try {
-            await execAsync(`"${path}" --version`);
-            return { available: true, path };
+            // Read the build-tools directory to find available versions
+            const {readdirSync} = await import("fs");
+            const versions = readdirSync(basePath, {withFileTypes: true})
+              .filter(dirent => dirent.isDirectory())
+              .map(dirent => dirent.name)
+              .sort((a, b) => {
+                // Sort versions in descending order (newest first)
+                const aParts = a.split('.').map(Number);
+                const bParts = b.split('.').map(Number);
+                for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                  const aPart = aParts[i] || 0;
+                  const bPart = bParts[i] || 0;
+                  if (aPart !== bPart) {
+                    return bPart - aPart; // Descending order
+                  }
+                }
+                return 0;
+              });
+            
+            // Try each version, starting with the newest
+            for (const version of versions) {
+              const apksignerPath = join(basePath, version, 'apksigner');
+              if (existsSync(apksignerPath)) {
+                try {
+                  await execAsync(`"${apksignerPath}" --version`);
+                  logger.info(`Found apksigner at ${apksignerPath} (version ${version})`);
+                  return { available: true, path: apksignerPath };
+                } catch (error) {
+                  logger.warn(`apksigner found at ${apksignerPath} but failed to execute:`, error.message);
+                }
+              }
+            }
           } catch (error) {
-            logger.warn(`apksigner found at ${path} but failed to execute:`, error.message);
+            logger.warn(`Error scanning ${basePath}:`, error.message);
           }
         }
       }
@@ -42,7 +69,7 @@ export async function checkApksignerAvailability() {
       return { 
         available: false, 
         path: null, 
-        error: "apksigner not found in common Mac installation paths. Please install Android Build Tools." 
+        error: "apksigner not found in Android Build Tools directories. Please install Android Build Tools." 
       };
     }
     
