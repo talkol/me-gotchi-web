@@ -11,3 +11,6 @@ dist/
 
 # Ignore environment variables
 .env
+
+# Ignore test temporary files
+test/temp/

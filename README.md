@@ -2,9 +2,11 @@
 
 ## Prerequisites
 
+* Release APK and release keystore of the Me-gotchi android-app project
+
 * Firebase CLI
 
-    ```
+    ```bash
     npm install firebase -g
     ```
 
@@ -12,40 +14,66 @@
 
 1. NPM install
 
-    ```
+    ```bash
     cd repo
     npm install
-    cd repo/functions
+    cd functions
     npm install
     ```
 
 2. Make sure functions are already deployed to server since local development is for the client only
 
-3. Run local development server
+## Development
 
-    ```
-    npm run dev
-    ```
+### Cloud Functions
+
+```bash
+cd functions
+npm test
+```
+
+### Website
+
+```bash
+npm run dev
+```
 
 ## Deploy
 
-1. Create `repo/functions/.env` with contents:
+### Cloud Functions
 
+1. Make sure the release APK has been built with:
+
+    ```bash
+    cd ../android-app
+    ./build-and-install.sh
     ```
+
+2. Refresh the APK and keystore:
+
+    ```bash
+    cd functions
+    npm run refresh-apk
+    ```
+
+3. Create `functions/.env` with contents:
+
+    ```bash
     OPENAI_API_KEY=sk-proj-xxxxx-xxx...
     ```
 
-2. Deploy functions to server
+4. Deploy functions to server
 
-    ```
+    ```bash
     cd functions
     firebase login
     npm run deploy
     ```
 
-3. Deploy client to Firebase Hosting
+### Website
 
-    ```
-    npm run build
-    firebase deploy --only hosting
-    ```
+```bash
+npm run build
+firebase login
+firebase deploy --only hosting
+```

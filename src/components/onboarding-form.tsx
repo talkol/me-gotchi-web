@@ -22,7 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { UploadCloud, Sparkles, AlertCircle, CheckCircle, Wand2, RefreshCw, ArrowLeft, ArrowRight } from "lucide-react";
+import { UploadCloud, Sparkles, AlertCircle, CheckCircle, Wand2, RefreshCw, ArrowLeft, ArrowRight, Download } from "lucide-react";
 import { HexColorPicker, HexColorInput } from "react-colorful";
 
 type OnboardingFormProps = {
@@ -596,23 +596,124 @@ const Step4 = ({ control }: { control: Control<OnboardingFormData> }) => {
   );
 };
 
-const Step5 = ({ inviteCode }: { inviteCode: string }) => (
-    <Card className="shadow-lg text-center">
-        <CardHeader>
-            <CardTitle className="font-headline text-3xl">All Set!</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center p-6">
-            <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-6" />
-            <p className="text-lg text-muted-foreground max-w-prose">
-                Your unique Me-gotchi is ready! To bring it to life, download the Me-gotchi app from the Google Play Store and enter your invite code when prompted.
-            </p>
-            <div className="mt-8">
-                <p className="text-sm text-muted-foreground">Your Invite Code:</p>
-                <p className="font-mono text-2xl font-bold bg-muted rounded-md py-2 px-4 inline-block mt-1">{inviteCode}</p>
-            </div>
-        </CardContent>
-    </Card>
-);
+const Step5 = ({ inviteCode }: { inviteCode: string }) => {
+    const [isGeneratingApk, setIsGeneratingApk] = useState(false);
+    const [apkUrl, setApkUrl] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const { toast } = useToast();
+
+    const generateCustomApk = async () => {
+        setIsGeneratingApk(true);
+        setError(null);
+        
+        try {
+            const functions = getFunctions(app);
+            const generateCustomizedApk = httpsCallable(functions, 'generateCustomizedApk');
+            
+            const result = await generateCustomizedApk({ inviteCode });
+            const { apkUrl: url } = result.data as { apkUrl: string };
+            
+            setApkUrl(url);
+            toast({
+                title: "Success!",
+                description: "Your customized APK has been generated successfully.",
+            });
+        } catch (err) {
+            const error = err as HttpsCallableError;
+            console.error('Error generating APK:', error);
+            
+            let errorMessage = "Failed to generate customized APK. Please try again.";
+            if (error.code === 'functions/not-found') {
+                errorMessage = "Invalid invite code. Please check your invite code and try again.";
+            } else if (error.code === 'functions/internal') {
+                errorMessage = "Server error. Please try again later.";
+            }
+            
+            setError(errorMessage);
+            toast({
+                title: "Error",
+                description: errorMessage,
+                variant: "destructive",
+            });
+        } finally {
+            setIsGeneratingApk(false);
+        }
+    };
+
+    return (
+        <Card className="shadow-lg text-center">
+            <CardHeader>
+                <CardTitle className="font-headline text-3xl">All Set!</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center p-6">
+                <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-6" />
+                <p className="text-lg text-muted-foreground max-w-prose">
+                    Your unique Me-gotchi is ready! Generate your customized APK to bring it to life on your device.
+                </p>
+                <div className="mt-8">
+                    <p className="text-sm text-muted-foreground">Your Invite Code:</p>
+                    <p className="font-mono text-2xl font-bold bg-muted rounded-md py-2 px-4 inline-block mt-1">{inviteCode}</p>
+                </div>
+                
+                <div className="mt-8 space-y-4">
+                    {!apkUrl ? (
+                        <Button 
+                            onClick={generateCustomApk}
+                            disabled={isGeneratingApk}
+                            size="lg"
+                            className="min-w-[200px]"
+                        >
+                            {isGeneratingApk ? (
+                                <>
+                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                    Generating APK...
+                                </>
+                            ) : (
+                                <>
+                                    <Wand2 className="mr-2 h-4 w-4" />
+                                    Generate Custom APK
+                                </>
+                            )}
+                        </Button>
+                    ) : (
+                        <div className="space-y-4">
+                            <Button 
+                                onClick={() => window.open(apkUrl, '_blank')}
+                                size="lg"
+                                className="min-w-[200px] bg-green-600 hover:bg-green-700"
+                            >
+                                <Download className="mr-2 h-4 w-4" />
+                                Download APK
+                            </Button>
+                            <Button 
+                                onClick={generateCustomApk}
+                                variant="outline"
+                                size="sm"
+                            >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Regenerate APK
+                            </Button>
+                        </div>
+                    )}
+                    
+                    {error && (
+                        <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                            <AlertCircle className="inline mr-2 h-4 w-4" />
+                            {error}
+                        </div>
+                    )}
+                </div>
+                
+                <div className="mt-6 text-sm text-muted-foreground max-w-prose">
+                    <p>
+                        <strong>Note:</strong> After downloading the APK, you'll need to enable "Install from Unknown Sources" 
+                        in your Android device settings to install the app.
+                    </p>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
 
 export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   const [currentStep, setCurrentStep] = useState(1);

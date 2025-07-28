@@ -123,7 +123,7 @@ export default function AdminPage() {
     }
   };
 
-  const generateInviteCode = () => {
+  const generateRandomInviteCode = () => {
     const generateCode = () => {
       const part1 = Math.floor(1000 + Math.random() * 9000);
       const part2 = Math.floor(1000 + Math.random() * 9000);
@@ -140,16 +140,16 @@ export default function AdminPage() {
     setNewInviteCode(code);
   };
 
-  const createInviteCode = async () => {
+  const generateInviteCode = async () => {
     if (!newInviteCode) return;
     
     setIsGenerating(true);
     try {
       // Call the Firebase Function to create the invite code with public access
       const functionsInstance = getFunctions(app, 'us-central1');
-      const createInviteCodeFunction = httpsCallable(functionsInstance, 'createInviteCode');
+      const generateInviteCodeFunction = httpsCallable(functionsInstance, 'generateInviteCode');
       
-      const result = await createInviteCodeFunction({ inviteCode: newInviteCode });
+      const result = await generateInviteCodeFunction({ inviteCode: newInviteCode });
       const data = result.data as { success: boolean; message: string; publicUrl: string };
       
       if (data.success) {
@@ -349,11 +349,11 @@ export default function AdminPage() {
                 onChange={(e) => setNewInviteCode(e.target.value)}
                 className="flex-1"
               />
-              <Button onClick={generateInviteCode} variant="outline">
+              <Button onClick={generateRandomInviteCode} variant="outline">
                 Generate
               </Button>
               <Button 
-                onClick={createInviteCode} 
+                onClick={generateInviteCode} 
                 disabled={!newInviteCode || isGenerating}
               >
                 {isGenerating ? "Creating..." : "Create"}
