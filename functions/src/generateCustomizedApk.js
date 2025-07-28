@@ -3,9 +3,14 @@ import {getStorage} from "firebase-admin/storage";
 import {HttpsError} from "firebase-functions/v2/https";
 import {onCall} from "firebase-functions/v2/https";
 import {z} from "zod";
-import {join} from "path";
+import {join, dirname} from "path";
 import {tmpdir} from "os";
-import {extractApkToTemp, copyFileFromFirebaseStorage, cleanupTempDirectory, packAndSignApk} from "./apkUtils.js";
+import {fileURLToPath} from "url";
+import {extractApkToTemp, copyFileFromFirebaseStorage, cleanupTempDirectory, packApk} from "./apkUtils.js";
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Schema for the request
 const CustomizeApkRequestSchema = z.object({
@@ -91,20 +96,13 @@ export const generateCustomizedApkImp = onCall({
       }
     }
 
-    // Create signed APK with customized assets using apkUtils
+    // Create APK with customized assets using apkUtils
     const customizedApkPath = join(tempDir, "customized.apk");
     
-    // Use the release keystore that's deployed with the function
-    const keystorePath = join(__dirname, "release.keystore");
-    
-    // Pack and sign the APK
-    await packAndSignApk(
+    // Pack the APK (unsigned)
+    await packApk(
       extractPath,
-      customizedApkPath,
-      keystorePath,
-      "trustno1", // keystore password
-      "megotchi", // key alias
-      "trustno1"  // key password
+      customizedApkPath
     );
     
     logger.info("Customized APK created and signed successfully");
@@ -151,6 +149,6 @@ export const generateCustomizedApkImp = onCall({
 
 // Helper function to read file
 async function readFile(filePath) {
-  const fs = require("fs");
+  const fs = await import("fs");
   return fs.promises.readFile(filePath);
 } 

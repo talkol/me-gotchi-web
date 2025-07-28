@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-* Release APK and release keystore of the Me-gotchi android-app project
+* Release APK of the Me-gotchi android-app project
 
 * Firebase CLI
 
@@ -15,7 +15,6 @@
 1. NPM install
 
     ```bash
-    cd repo
     npm install
     cd functions
     npm install
@@ -49,7 +48,7 @@ npm run dev
     ./build-and-install.sh
     ```
 
-2. Refresh the APK and keystore:
+2. Refresh the APK:
 
     ```bash
     cd functions

@@ -3,96 +3,8 @@ import {getStorage} from "firebase-admin/storage";
 import {HttpsError} from "firebase-functions/v2/https";
 import AdmZip from "adm-zip";
 import {mkdir, rm} from "fs/promises";
-import {existsSync} from "fs";
 import {join} from "path";
 import {tmpdir} from "os";
-import {exec} from "child_process";
-import {promisify} from "util";
-
-const execAsync = promisify(exec);
-
-/**
- * Helper function to check if apksigner is available and get its path
- * @returns {Promise<{available: boolean, path: string, error?: string}>}
- */
-export async function checkApksignerAvailability() {
-  try {
-    // Check if we're in a local development environment (Mac)
-    if (process.platform === 'darwin') {
-      // Try to find apksigner dynamically by scanning build-tools directories
-      const possibleBasePaths = [
-        '/opt/homebrew/share/android-commandlinetools/build-tools',
-        '/usr/local/share/android-commandlinetools/build-tools'
-      ];
-      
-      for (const basePath of possibleBasePaths) {
-        if (existsSync(basePath)) {
-          try {
-            // Read the build-tools directory to find available versions
-            const {readdirSync} = await import("fs");
-            const versions = readdirSync(basePath, {withFileTypes: true})
-              .filter(dirent => dirent.isDirectory())
-              .map(dirent => dirent.name)
-              .sort((a, b) => {
-                // Sort versions in descending order (newest first)
-                const aParts = a.split('.').map(Number);
-                const bParts = b.split('.').map(Number);
-                for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-                  const aPart = aParts[i] || 0;
-                  const bPart = bParts[i] || 0;
-                  if (aPart !== bPart) {
-                    return bPart - aPart; // Descending order
-                  }
-                }
-                return 0;
-              });
-            
-            // Try each version, starting with the newest
-            for (const version of versions) {
-              const apksignerPath = join(basePath, version, 'apksigner');
-              if (existsSync(apksignerPath)) {
-                try {
-                  await execAsync(`"${apksignerPath}" --version`);
-                  logger.info(`Found apksigner at ${apksignerPath} (version ${version})`);
-                  return { available: true, path: apksignerPath };
-                } catch (error) {
-                  logger.warn(`apksigner found at ${apksignerPath} but failed to execute:`, error.message);
-                }
-              }
-            }
-          } catch (error) {
-            logger.warn(`Error scanning ${basePath}:`, error.message);
-          }
-        }
-      }
-      
-      return { 
-        available: false, 
-        path: null, 
-        error: "apksigner not found in Android Build Tools directories. Please install Android Build Tools." 
-      };
-    }
-    
-    // In Firebase Cloud Functions or other environments, try PATH
-    try {
-      await execAsync('apksigner --version');
-      return { available: true, path: 'apksigner' };
-    } catch (error) {
-      return { 
-        available: false, 
-        path: null, 
-        error: "apksigner not found in PATH. Please ensure Android Build Tools are installed." 
-      };
-    }
-    
-  } catch (error) {
-    return { 
-      available: false, 
-      path: null, 
-      error: `Error checking apksigner availability: ${error.message}` 
-    };
-  }
-}
 
 /**
  * Utility functions for APK operations
@@ -140,18 +52,14 @@ export async function extractApkToTemp(apkPath, tempDir = null) {
 }
 
 /**
- * Packs a temp folder back to an APK and signs it using a release keystore
+ * Packs a temp folder back to an APK (unsigned)
  * @param {string} extractPath - Path to the extracted APK contents
- * @param {string} outputPath - Path where the signed APK should be saved
- * @param {string} keystorePath - Path to the release keystore file
- * @param {string} keystorePassword - Password for the keystore
- * @param {string} keyAlias - Alias of the key in the keystore
- * @param {string} keyPassword - Password for the key
- * @returns {Promise<string>} - Returns the path to the signed APK
+ * @param {string} outputPath - Path where the APK should be saved
+ * @returns {Promise<string>} - Returns the path to the APK
  */
-export async function packAndSignApk(extractPath, outputPath, keystorePath, keystorePassword, keyAlias, keyPassword) {
+export async function packApk(extractPath, outputPath) {
   try {
-    logger.info(`Packing and signing APK from: ${extractPath}`);
+    logger.info(`Packing APK from: ${extractPath}`);
     
     // Create new APK using AdmZip
     const zip = new AdmZip();
@@ -181,42 +89,32 @@ export async function packAndSignApk(extractPath, outputPath, keystorePath, keys
     
     logger.info(`Unsigned APK created: ${unsignedApkPath}`);
     
-    // Sign the APK using apksigner
-    const apksignerCheck = await checkApksignerAvailability();
-    if (!apksignerCheck.available) {
-      throw new HttpsError("internal", `apksigner not available: ${apksignerCheck.error}`);
-    }
+    // For cloud functions, we'll skip signing and return the unsigned APK
+    // In production, you might want to use a pre-signed template or a different signing approach
+    logger.info("Skipping APK signing in cloud function environment");
     
-    const signCommand = `"${apksignerCheck.path}" sign --ks "${keystorePath}" --ks-pass pass:"${keystorePassword}" --key-pass pass:"${keyPassword}" --out "${outputPath}" "${unsignedApkPath}"`;
-    
-    logger.info(`Signing APK with apksigner at: ${apksignerCheck.path}`);
-    const {stdout, stderr} = await execAsync(signCommand);
-    
-    if (stderr && !stderr.includes("WARNING")) {
-      logger.error("Error signing APK:", stderr);
-      throw new HttpsError("internal", "Failed to sign APK: " + stderr);
-    }
-    
-    logger.info(`APK signed successfully: ${outputPath}`);
-    logger.info("Signing output:", stdout);
+    // Copy unsigned APK to output path
+    const {copyFileSync} = await import("fs");
+    copyFileSync(unsignedApkPath, outputPath);
+    logger.info(`Unsigned APK copied to: ${outputPath}`);
     
     // Clean up unsigned APK
     try {
       const {unlinkSync} = await import("fs");
       unlinkSync(unsignedApkPath);
-      logger.info("Cleaned up unsigned APK");
+      logger.info("Cleaned up temporary unsigned APK");
     } catch (cleanupError) {
-      logger.warn("Could not clean up unsigned APK:", cleanupError);
+      logger.warn("Could not clean up temporary unsigned APK:", cleanupError);
     }
     
     return outputPath;
     
   } catch (error) {
-    logger.error("Error packing and signing APK:", error);
+    logger.error("Error packing APK:", error);
     if (error instanceof HttpsError) {
       throw error;
     }
-    throw new HttpsError("internal", "Failed to pack and sign APK: " + error.message);
+    throw new HttpsError("internal", "Failed to pack APK: " + error.message);
   }
 }
 

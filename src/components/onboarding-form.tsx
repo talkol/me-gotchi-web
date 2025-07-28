@@ -8,7 +8,7 @@ import { z } from "zod";
 import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { app } from "@/lib/firebase";
-import { getFunctions, httpsCallable, type HttpsCallableError } from "firebase/functions";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 
 import { Button } from "@/components/ui/button";
@@ -600,11 +600,21 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => {
     const [isGeneratingApk, setIsGeneratingApk] = useState(false);
     const [apkUrl, setApkUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [progress, setProgress] = useState(0);
     const { toast } = useToast();
 
     const generateCustomApk = async () => {
         setIsGeneratingApk(true);
         setError(null);
+        setProgress(0);
+        
+        // Simulate progress updates
+        const progressInterval = setInterval(() => {
+            setProgress(prev => {
+                if (prev >= 90) return prev;
+                return prev + Math.random() * 10;
+            });
+        }, 1000);
         
         try {
             const functions = getFunctions(app);
@@ -613,13 +623,14 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => {
             const result = await generateCustomizedApk({ inviteCode });
             const { apkUrl: url } = result.data as { apkUrl: string };
             
+            setProgress(100);
             setApkUrl(url);
             toast({
                 title: "Success!",
                 description: "Your customized APK has been generated successfully.",
             });
         } catch (err) {
-            const error = err as HttpsCallableError;
+            const error = err as any;
             console.error('Error generating APK:', error);
             
             let errorMessage = "Failed to generate customized APK. Please try again.";
@@ -636,7 +647,9 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => {
                 variant: "destructive",
             });
         } finally {
+            clearInterval(progressInterval);
             setIsGeneratingApk(false);
+            setProgress(0);
         }
     };
 
@@ -650,37 +663,44 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => {
                 <p className="text-lg text-muted-foreground max-w-prose">
                     Your unique Me-gotchi is ready! Generate your customized APK to bring it to life on your device.
                 </p>
-                <div className="mt-8">
-                    <p className="text-sm text-muted-foreground">Your Invite Code:</p>
-                    <p className="font-mono text-2xl font-bold bg-muted rounded-md py-2 px-4 inline-block mt-1">{inviteCode}</p>
-                </div>
                 
                 <div className="mt-8 space-y-4">
                     {!apkUrl ? (
-                        <Button 
-                            onClick={generateCustomApk}
-                            disabled={isGeneratingApk}
-                            size="lg"
-                            className="min-w-[200px]"
-                        >
-                            {isGeneratingApk ? (
-                                <>
-                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                                    Generating APK...
-                                </>
-                            ) : (
-                                <>
-                                    <Wand2 className="mr-2 h-4 w-4" />
-                                    Generate Custom APK
-                                </>
+                        <div className="space-y-4">
+                            <Button 
+                                onClick={generateCustomApk}
+                                disabled={isGeneratingApk}
+                                size="lg"
+                                className="min-w-[200px] font-bold text-base"
+                            >
+                                {isGeneratingApk ? (
+                                    <>
+                                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                        Generating APK...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Wand2 className="mr-2 h-4 w-4" />
+                                        Generate APK
+                                    </>
+                                )}
+                            </Button>
+                            
+                            {isGeneratingApk && (
+                                <div className="w-full max-w-md space-y-2">
+                                    <Progress value={progress} className="w-full" />
+                                    <p className="text-sm text-muted-foreground">
+                                        Generating your customized APK... {Math.round(progress)}%
+                                    </p>
+                                </div>
                             )}
-                        </Button>
+                        </div>
                     ) : (
                         <div className="space-y-4">
                             <Button 
                                 onClick={() => window.open(apkUrl, '_blank')}
                                 size="lg"
-                                className="min-w-[200px] bg-green-600 hover:bg-green-700"
+                                className="min-w-[200px] bg-green-600 hover:bg-green-700 font-bold text-base"
                             >
                                 <Download className="mr-2 h-4 w-4" />
                                 Download APK
@@ -704,11 +724,42 @@ const Step5 = ({ inviteCode }: { inviteCode: string }) => {
                     )}
                 </div>
                 
-                <div className="mt-6 text-sm text-muted-foreground max-w-prose">
-                    <p>
-                        <strong>Note:</strong> After downloading the APK, you'll need to enable "Install from Unknown Sources" 
-                        in your Android device settings to install the app.
-                    </p>
+                <div className="mt-6 w-full max-w-2xl">
+                    <h3 className="text-lg font-semibold mb-3">Installation Commands</h3>
+                    <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-xs overflow-x-auto text-left">
+                        <div className="space-y-2">
+                            <div className="text-left text-blue-400">
+                                # Download the customized APK from the bucket using the invite code URL
+                            </div>
+                            <div className="text-left">
+                                <span className="text-yellow-400">$</span> curl -o me-gotchi.apk "{apkUrl || `https://storage.googleapis.com/me-gotchi.firebasestorage.app/${encodeURIComponent(inviteCode)}/me-gotchi.apk`}"
+                            </div>
+                            <div className="mt-4 text-left text-blue-400">
+                                # Sign the APK with release keystore
+                            </div>
+                            <div className="text-left">
+                                <span className="text-yellow-400">$</span> apksigner sign --ks release.keystore --ks-pass pass:trustno1 --key-pass pass:trustno1 --out me-gotchi-signed.apk me-gotchi.apk
+                            </div>
+                            <div className="mt-4 text-left text-blue-400">
+                                # Install the signed APK using adb
+                            </div>
+                            <div className="text-left">
+                                <span className="text-yellow-400">$</span> adb install -t me-gotchi-signed.apk
+                            </div>
+                            <div className="mt-4 text-left text-blue-400">
+                                # Set device owner for kiosk mode
+                            </div>
+                            <div className="text-left">
+                                <span className="text-yellow-400">$</span> adb shell dpm set-device-owner com.megotchi.v1/.KioskDeviceAdminReceiver
+                            </div>
+                            <div className="mt-4 text-left text-blue-400">
+                                # Start the Me-gotchi app
+                            </div>
+                            <div className="text-left">
+                                <span className="text-yellow-400">$</span> adb shell am start -n com.megotchi.v1/com.megotchi.v1.GodotApp
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </CardContent>
         </Card>
@@ -897,7 +948,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
       }
     } catch (error) {
  console.error("Firebase environment generation error:", error);
- const functionsError = error as HttpsCallableError;
+ const functionsError = error as any;
  const errorMessage = `Code: ${functionsError.code}. Message: ${functionsError.message}. Details: ${JSON.stringify(functionsError.details)}`;
  setEnvironmentGenerationStates(prev => ({ ...prev, [generationType]: { status: 'error', message: errorMessage } }));
     }
@@ -1132,7 +1183,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
  }
     } catch (error) {
         console.error("Full Firebase function call error:", error);
-        const functionsError = error as HttpsCallableError;
+        const functionsError = error as any;
         const errorMessage = `Code: ${functionsError.code}. Message: ${functionsError.message}. Details: ${JSON.stringify(functionsError.details)}`;
         
         setLastResult({

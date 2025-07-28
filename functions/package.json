@@ -12,7 +12,7 @@
     "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
     "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
-    "refresh-apk": "cp ../../android-app/android/build/build/outputs/apk/release/android_release.apk src/Me-gotchi.apk && cp ../../android-app/release.keystore src/release.keystore && echo '✅ APK and keystore refreshed successfully'"
+    "refresh-apk": "cp ../../android-app/android/build/build/outputs/apk/release/android_release.apk src/Me-gotchi.apk && echo '✅ APK refreshed successfully'"
   },
   "engines": {
     "node": "20"
