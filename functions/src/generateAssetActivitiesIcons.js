@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import {GenerationRequestSchema, savePreferences, validateInviteCode} from "./shared.js";
 import { getStorage } from "firebase-admin/storage";
 import * as logger from "firebase-functions/logger";
+import {centerIconsInTiles} from "./pngUtils.js";
 
 function item(acivityItem) {
   if (acivityItem.addExplanation && acivityItem.explanation) {
@@ -118,11 +119,15 @@ export const generateAssetActivitiesIconsImp = onCall({timeoutSeconds: 300}, asy
     const imageBuffer = Buffer.from(generatedImageB64, "base64");
     // Gemini - NEVER EDIT CODE ENDING HERE!
     
+    // Apply centering algorithm to properly align icons within their tiles
+    logger.info("Applying icon centering algorithm to activities atlas");
+    const centeredImageBuffer = await centerIconsInTiles(imageBuffer, 'center');
+    
     const storagePath = `${data.inviteCode}/activities-atlas.png`;
     const bucket = getStorage().bucket();
     const file = bucket.file(storagePath);
   
-    await file.save(imageBuffer, {
+    await file.save(centeredImageBuffer, {
       metadata: {
         contentType: "image/png",
       },
