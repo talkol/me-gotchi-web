@@ -7,6 +7,8 @@ import {join, dirname} from "path";
 import {tmpdir} from "os";
 import {fileURLToPath} from "url";
 import {extractApkToTemp, copyFileFromFirebaseStorage, cleanupTempDirectory, packApk} from "./apkUtils.js";
+import {replaceStexWithImage, IMAGE_FORMATS} from "./stexUtils.js";
+import {readdirSync, unlinkSync} from "fs";
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -72,21 +74,60 @@ export const generateCustomizedApkImp = onCall({
 
     logger.info("Downloading user-specific assets...");
     
+    // Create temporary directory for downloaded images
+    const tempImagesDir = join(tempDir, "downloaded-images");
+    await import("fs").then(fs => fs.promises.mkdir(tempImagesDir, { recursive: true }));
+
     for (const asset of assetsToDownload) {
       try {
-        let destinationPath;
-        
         if (asset === "data.json") {
-          // data.json goes in assets/data/
-          destinationPath = join(extractPath, "assets", "data", asset);
+          // data.json goes directly in assets/data/
+          const destinationPath = join(extractPath, "assets", "data", asset);
+          await copyFileFromFirebaseStorage(`${inviteCode}/${asset}`, destinationPath);
+          logger.info(`Downloaded ${asset} to ${destinationPath}`);
         } else {
-          // Image assets go in assets/images/ with .bin extension
-          destinationPath = join(extractPath, "assets", "images", `${asset}.bin`);
-        }
+          // For image assets, download to temp location first
+          const tempImagePath = join(tempImagesDir, asset);
+          await copyFileFromFirebaseStorage(`${inviteCode}/${asset}`, tempImagePath);
+          logger.info(`Downloaded ${asset} to temporary location`);
 
-        // Use apkUtils to copy file from Firebase Storage
-        await copyFileFromFirebaseStorage(`${inviteCode}/${asset}`, destinationPath);
-        logger.info(`Downloaded ${asset} to ${destinationPath}`);
+          // Find corresponding STEX file in assets/.import/
+          const importDir = join(extractPath, "assets", ".import");
+          const importFiles = readdirSync(importDir);
+          
+          // Look for STEX file that starts with the asset name
+          const assetBaseName = asset.split('.')[0]; // Remove extension
+          const matchingStexFile = importFiles.find(file => 
+            file.startsWith(assetBaseName + '.') && file.endsWith('.stex')
+          );
+
+          if (matchingStexFile) {
+            const stexFilePath = join(importDir, matchingStexFile);
+            logger.info(`Found matching STEX file: ${matchingStexFile} for asset: ${asset}`);
+
+            // Determine image format based on file extension
+            const imageFormat = asset.toLowerCase().endsWith('.jpg') || asset.toLowerCase().endsWith('.jpeg') 
+              ? IMAGE_FORMATS.FORMAT_RGB8  // JPG typically doesn't have alpha
+              : IMAGE_FORMATS.FORMAT_RGBA8; // PNG supports alpha
+
+            // Replace STEX content with the downloaded image
+            const result = await replaceStexWithImage(
+              stexFilePath,
+              tempImagePath,
+              {
+                format: imageFormat,
+                outputPath: stexFilePath  // Overwrite the original
+              }
+            );
+
+            logger.info(`Successfully replaced STEX content for ${asset}: ${result.originalDimensions.width}x${result.originalDimensions.height} -> ${result.newDimensions.width}x${result.newDimensions.height}`);
+
+            // Clean up temporary image file
+            unlinkSync(tempImagePath);
+          } else {
+            logger.warn(`No matching STEX file found for asset: ${asset} in .import directory`);
+          }
+        }
       } catch (error) {
         if (error.code === 'functions/not-found') {
           logger.warn(`Asset ${asset} not found for invite code ${inviteCode}, skipping...`);
