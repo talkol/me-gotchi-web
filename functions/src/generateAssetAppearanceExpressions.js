@@ -106,6 +106,8 @@ Add subtle enhancements such as:
     * Layered hair with suggestion of individual locks`;
 
     const sharedPromptSuffix = `
+  
+Content:
     - Top row:
       - Big smile with mouth closed, eyes open
       - Bigger happier smile with mouth slightly open, eyes open
