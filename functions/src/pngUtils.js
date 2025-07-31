@@ -136,10 +136,19 @@ async function processTileWithExpandedSearch(inputData, outputData, width, heigh
       }
     }
 
-    // Filter out background elements: ignore parts that span more than 5 tiles
+    // Filter out background elements with different rules based on content type
     const tilesSpanned = pixelCounts.size;
-    if (tilesSpanned > 5) {
-      continue; // Skip this part - it's likely a background element
+    
+    if (alignmentMode === 'center') {
+      // For food icons: stricter filtering - food items should be self-contained
+      if (tilesSpanned >= 3) {
+        continue; // Skip parts that span 3+ tiles for food icons
+      }
+    } else {
+      // For face expressions: more lenient - facial features can span tiles
+      if (tilesSpanned > 5) {
+        continue; // Skip parts that span more than 5 tiles for face expressions
+      }
     }
 
     // Find which tile has the most pixels of this part

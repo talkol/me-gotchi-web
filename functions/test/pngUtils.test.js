@@ -204,6 +204,44 @@ describe('PNG Utils', () => {
       expect(resultRaw.equals(expectedRaw)).toBe(true);
     });
 
+    test('should center food2 icons using "center" mode with improved filtering', async () => {
+      const inputPath = path.join(TEST_DATA_DIR, 'food-atlas2.png');
+      const expectedPath = path.join(TEST_DATA_DIR, 'food-atlas2-RESULT.png');
+      const outputPath = path.join(TEST_OUTPUT_DIR, 'food2-centered-output.png');
+
+      // Process the image with improved multi-tile filtering
+      const resultBuffer = await centerIconsInTiles(inputPath, 'center');
+      
+      // Verify the result is a valid PNG buffer
+      expect(Buffer.isBuffer(resultBuffer)).toBe(true);
+      expect(resultBuffer.length).toBeGreaterThan(0);
+
+      // Save output for manual inspection if test fails
+      fs.writeFileSync(outputPath, resultBuffer);
+
+      // Verify output image properties
+      const outputMetadata = await sharp(resultBuffer).metadata();
+      expect(outputMetadata.width).toBe(1024);
+      expect(outputMetadata.height).toBe(1024);
+      expect(outputMetadata.channels).toBeGreaterThanOrEqual(4);
+
+      // Load expected result and compare
+      const expectedBuffer = fs.readFileSync(expectedPath);
+      const expectedMetadata = await sharp(expectedBuffer).metadata();
+      
+      // Compare metadata
+      expect(outputMetadata.width).toBe(expectedMetadata.width);
+      expect(outputMetadata.height).toBe(expectedMetadata.height);
+      expect(outputMetadata.channels).toBe(expectedMetadata.channels);
+      
+      // Compare image content - convert both to raw data for pixel-perfect comparison
+      const resultRaw = await sharp(resultBuffer).raw().toBuffer();
+      const expectedRaw = await sharp(expectedBuffer).raw().toBuffer();
+      
+      // Images should be identical
+      expect(resultRaw.equals(expectedRaw)).toBe(true);
+    });
+
     test('should handle different alignment modes correctly', async () => {
       const inputPath = path.join(TEST_DATA_DIR, 'activities-atlas.png');
       
@@ -268,21 +306,26 @@ describe('PNG Utils', () => {
       const faceExpectedPath = path.join(TEST_DATA_DIR, 'face-atlas-RESULT.png');
       const foodPath = path.join(TEST_DATA_DIR, 'food-atlas.png');
       const foodExpectedPath = path.join(TEST_DATA_DIR, 'food-atlas-RESULT.png');
+      const food2Path = path.join(TEST_DATA_DIR, 'food-atlas2.png');
+      const food2ExpectedPath = path.join(TEST_DATA_DIR, 'food-atlas2-RESULT.png');
 
       // Process all images
       const activitiesResult = await centerIconsInTiles(activitiesPath, 'center');
       const faceResult = await centerIconsInTiles(facePath, 'center-bottom');
       const foodResult = await centerIconsInTiles(foodPath, 'center');
+      const food2Result = await centerIconsInTiles(food2Path, 'center');
 
       // Verify all results are valid
       expect(Buffer.isBuffer(activitiesResult)).toBe(true);
       expect(Buffer.isBuffer(faceResult)).toBe(true);
       expect(Buffer.isBuffer(foodResult)).toBe(true);
+      expect(Buffer.isBuffer(food2Result)).toBe(true);
 
       // Verify we can analyze the output images
       const activitiesAnalysis = await analyzeImageStructure(activitiesResult);
       const faceAnalysis = await analyzeImageStructure(faceResult);
       const foodAnalysis = await analyzeImageStructure(foodResult);
+      const food2Analysis = await analyzeImageStructure(food2Result);
 
       expect(activitiesAnalysis.width).toBe(1024);
       expect(activitiesAnalysis.height).toBe(1024);
@@ -290,11 +333,14 @@ describe('PNG Utils', () => {
       expect(faceAnalysis.height).toBe(1024);
       expect(foodAnalysis.width).toBe(1024);
       expect(foodAnalysis.height).toBe(1024);
+      expect(food2Analysis.width).toBe(1024);
+      expect(food2Analysis.height).toBe(1024);
 
       // Compare against expected results
       const activitiesExpected = fs.readFileSync(activitiesExpectedPath);
       const faceExpected = fs.readFileSync(faceExpectedPath);
       const foodExpected = fs.readFileSync(foodExpectedPath);
+      const food2Expected = fs.readFileSync(food2ExpectedPath);
 
       // Convert to raw data for pixel-perfect comparison
       const activitiesResultRaw = await sharp(activitiesResult).raw().toBuffer();
@@ -303,11 +349,14 @@ describe('PNG Utils', () => {
       const faceExpectedRaw = await sharp(faceExpected).raw().toBuffer();
       const foodResultRaw = await sharp(foodResult).raw().toBuffer();
       const foodExpectedRaw = await sharp(foodExpected).raw().toBuffer();
+      const food2ResultRaw = await sharp(food2Result).raw().toBuffer();
+      const food2ExpectedRaw = await sharp(food2Expected).raw().toBuffer();
 
       // All results should match expected output exactly
       expect(activitiesResultRaw.equals(activitiesExpectedRaw)).toBe(true);
       expect(faceResultRaw.equals(faceExpectedRaw)).toBe(true);
       expect(foodResultRaw.equals(foodExpectedRaw)).toBe(true);
+      expect(food2ResultRaw.equals(food2ExpectedRaw)).toBe(true);
     }, 20000);
 
     test('should preserve image quality and transparency', async () => {
