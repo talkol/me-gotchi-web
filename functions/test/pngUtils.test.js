@@ -128,6 +128,44 @@ describe('PNG Utils', () => {
       expect(resultRaw.equals(expectedRaw)).toBe(true);
     });
 
+    test('should center face2 icons using "center-bottom" mode with bridge separation', async () => {
+      const inputPath = path.join(TEST_DATA_DIR, 'face-atlas2.png');
+      const expectedPath = path.join(TEST_DATA_DIR, 'face-atlas2-RESULT.png');
+      const outputPath = path.join(TEST_OUTPUT_DIR, 'face2-centered-bottom-output.png');
+
+      // Process the image with bridge separation algorithm
+      const resultBuffer = await centerIconsInTiles(inputPath, 'center-bottom');
+      
+      // Verify the result is a valid PNG buffer
+      expect(Buffer.isBuffer(resultBuffer)).toBe(true);
+      expect(resultBuffer.length).toBeGreaterThan(0);
+
+      // Save output for manual inspection if test fails
+      fs.writeFileSync(outputPath, resultBuffer);
+
+      // Verify output image properties
+      const outputMetadata = await sharp(resultBuffer).metadata();
+      expect(outputMetadata.width).toBe(1024);
+      expect(outputMetadata.height).toBe(1024);
+      expect(outputMetadata.channels).toBeGreaterThanOrEqual(4);
+
+      // Load expected result and compare
+      const expectedBuffer = fs.readFileSync(expectedPath);
+      const expectedMetadata = await sharp(expectedBuffer).metadata();
+      
+      // Compare metadata
+      expect(outputMetadata.width).toBe(expectedMetadata.width);
+      expect(outputMetadata.height).toBe(expectedMetadata.height);
+      expect(outputMetadata.channels).toBe(expectedMetadata.channels);
+      
+      // Compare image content - convert both to raw data for pixel-perfect comparison
+      const resultRaw = await sharp(resultBuffer).raw().toBuffer();
+      const expectedRaw = await sharp(expectedBuffer).raw().toBuffer();
+      
+      // Images should be identical
+      expect(resultRaw.equals(expectedRaw)).toBe(true);
+    });
+
     test('should center food icons using "center" mode', async () => {
       const inputPath = path.join(TEST_DATA_DIR, 'food-atlas.png');
       const expectedPath = path.join(TEST_DATA_DIR, 'food-atlas-RESULT.png');

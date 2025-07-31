@@ -35,6 +35,13 @@ export async function centerIconsInTiles(inputImagePath, alignmentMode = 'center
   const outputBuffer = Buffer.alloc(data.length);
   outputBuffer.fill(0); // Initialize with transparent pixels
 
+  // Apply row-by-row bridge removal for center-bottom mode (ONCE for entire image)
+  if (alignmentMode === 'center-bottom') {
+    removeBridgesBetweenPartsInRows(data, width, height, channels);
+    
+    // Bridge separation complete
+  }
+
   // Process each of the 9 tiles
   for (let tileY = 0; tileY < 3; tileY++) {
     for (let tileX = 0; tileX < 3; tileX++) {
@@ -90,6 +97,8 @@ async function processTileWithExpandedSearch(inputData, outputData, width, heigh
   }
 
   const currentTile = tiles.find(t => t.x === tileX && t.y === tileY);
+
+  // Bridge removal is now done at the image level, not per tile
 
   // Step 1: Find ALL parts (connected components) in the entire image
   const allParts = [];
@@ -215,6 +224,262 @@ async function processTileWithExpandedSearch(inputData, outputData, width, heigh
         outputData[targetPixelIndex + 3] = inputData[sourcePixelIndex + 3]; // A
       }
     }
+  }
+}
+
+/**
+ * Marks bridges between parts in each row for center-bottom mode (in red for debugging)
+ * Processes each row independently to ensure we get 3 separate parts per row
+ */
+function removeBridgesBetweenPartsInRows(inputData, width, height, channels) {
+  const rowHeight = Math.floor(height / 3); // Each row is approximately 341 pixels
+  
+  // Process all 3 rows
+  for (let rowIndex = 0; rowIndex < 3; rowIndex++) {
+    const rowStartY = rowIndex * rowHeight;
+    const rowEndY = rowIndex === 2 ? height : (rowIndex + 1) * rowHeight; // Handle the last row
+    
+    processRowForBridges(inputData, width, height, channels, rowStartY, rowEndY);
+  }
+}
+
+/**
+ * Processes a single row to find and remove bridges between connected parts
+ */
+function processRowForBridges(inputData, width, height, channels, rowStartY, rowEndY) {
+  // Step 1: Find connected components within this row
+  const rowParts = findConnectedPartsInRow(inputData, width, height, channels, rowStartY, rowEndY);
+  
+  // Step 2: If we have fewer than 3 parts, we need to find and remove bridges
+  if (rowParts.length < 3) {
+    for (const part of rowParts) {
+      if (shouldSplitPart(part, width)) {
+        removeBridgesFromPart(part, inputData, width, height, channels, rowParts.length);
+      }
+    }
+  }
+}
+
+/**
+ * Finds connected components within a specific row (but allows full face detection across boundaries)
+ */
+function findConnectedPartsInRow(inputData, width, height, channels, rowStartY, rowEndY) {
+  const parts = [];
+  const visited = new Set();
+  
+  // Only start flood-fill from pixels within the row, but allow the flood-fill to explore the entire image
+  for (let y = rowStartY; y < rowEndY; y++) {
+    for (let x = 0; x < width; x++) {
+      const pixelIndex = (y * width + x) * channels;
+      const alpha = inputData[pixelIndex + 3];
+      const key = `${x},${y}`;
+      
+      if (alpha > 10 && !visited.has(key)) {
+        const part = exploreConnectedPixels(inputData, width, height, channels, x, y, visited, 0, width, 0, height);
+        if (part.pixels.length > 10) { // Filter out tiny noise
+          const partHeight = part.bounds.maxY - part.bounds.minY + 1;
+          // Only count substantial parts (not thin horizontal strips)
+          if (partHeight > 50) {
+            // Only include parts that have significant presence in this row
+            const pixelsInRow = part.pixels.filter(p => p.y >= rowStartY && p.y < rowEndY).length;
+            const percentageInRow = pixelsInRow / part.pixels.length;
+            
+            // If at least 30% of the part is in this row, consider it belongs to this row
+            if (percentageInRow >= 0.3) {
+              parts.push(part);
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  return parts;
+}
+
+/**
+ * Determines if a part is large enough to potentially contain multiple faces
+ */
+function shouldSplitPart(part, width) {
+  const partWidth = part.bounds.maxX - part.bounds.minX + 1;
+  const expectedSinglePartWidth = width / 3; // ~341 pixels
+  
+  // If the part is wider than 1.5 times the expected width, it likely contains multiple faces
+  return partWidth > expectedSinglePartWidth * 1.5;
+}
+
+/**
+ * Removes bridges from a large part by finding narrow connection points
+ */
+function removeBridgesFromPart(part, inputData, width, height, channels, currentPartsInRow) {
+  const partWidth = part.bounds.maxX - part.bounds.minX + 1;
+  
+  // Calculate how many bridges we need based on current parts in row
+  const expectedParts = 3; // We always want 3 parts per row
+  const neededSplits = expectedParts - currentPartsInRow; // How many more parts we need
+  
+  if (neededSplits === 1) {
+    // Split into 2 parts - find 1 bridge in the middle
+    const expectedBridgeX = part.bounds.minX + Math.floor(partWidth / 2);
+    const bridge = findNarrowestBridge(part, inputData, width, height, channels, expectedBridgeX - 20, expectedBridgeX + 20);
+    
+    if (bridge) {
+      removeBridgePixels(bridge, inputData, width, channels);
+    }
+  } else if (neededSplits === 2) {
+    // Split into 3 parts - find 2 bridges at 1/3 and 2/3 positions
+    const expectedBridgeX1 = part.bounds.minX + Math.floor(partWidth / 3);
+    const expectedBridgeX2 = part.bounds.minX + Math.floor(2 * partWidth / 3);
+    
+    const bridge1 = findNarrowestBridge(part, inputData, width, height, channels, expectedBridgeX1 - 20, expectedBridgeX1 + 20);
+    const bridge2 = findNarrowestBridge(part, inputData, width, height, channels, expectedBridgeX2 - 20, expectedBridgeX2 + 20);
+    
+    if (bridge1) {
+      removeBridgePixels(bridge1, inputData, width, channels);
+    }
+    
+    if (bridge2) {
+      removeBridgePixels(bridge2, inputData, width, channels);
+    }
+  }
+}
+
+/**
+ * Finds the narrowest bridge (shortest pixel column) in a given X range
+ */
+function findNarrowestBridge(part, inputData, width, height, channels, searchStartX, searchEndX) {
+  let narrowestBridge = null;
+  let minHeight = Infinity;
+  
+  // Search for the narrowest vertical connection
+  for (let x = Math.max(searchStartX, part.bounds.minX); x <= Math.min(searchEndX, part.bounds.maxX); x++) {
+    const columnHeight = getColumnHeightInPart(part, x);
+    
+    if (columnHeight > 0 && columnHeight < minHeight) {
+      minHeight = columnHeight;
+      narrowestBridge = {
+        x: x,
+        height: columnHeight,
+        startY: getColumnStartY(part, x),
+        endY: getColumnEndY(part, x)
+      };
+    }
+  }
+  
+  return narrowestBridge;
+}
+
+/**
+ * Gets the height of pixels in a specific column within a part
+ */
+function getColumnHeightInPart(part, targetX) {
+  const pixelsInColumn = part.pixels.filter(p => p.x === targetX);
+  if (pixelsInColumn.length === 0) return 0;
+  
+  const minY = Math.min(...pixelsInColumn.map(p => p.y));
+  const maxY = Math.max(...pixelsInColumn.map(p => p.y));
+  
+  return maxY - minY + 1;
+}
+
+/**
+ * Gets the starting Y coordinate of pixels in a column
+ */
+function getColumnStartY(part, targetX) {
+  const pixelsInColumn = part.pixels.filter(p => p.x === targetX);
+  return pixelsInColumn.length > 0 ? Math.min(...pixelsInColumn.map(p => p.y)) : 0;
+}
+
+/**
+ * Gets the ending Y coordinate of pixels in a column
+ */
+function getColumnEndY(part, targetX) {
+  const pixelsInColumn = part.pixels.filter(p => p.x === targetX);
+  return pixelsInColumn.length > 0 ? Math.max(...pixelsInColumn.map(p => p.y)) : 0;
+}
+
+/**
+ * Actually deletes bridge pixels by making them transparent
+ */
+function removeBridgePixels(bridge, inputData, width, channels) {
+  for (let y = bridge.startY; y <= bridge.endY; y++) {
+    const pixelIndex = (y * width + bridge.x) * channels;
+    inputData[pixelIndex] = 0;       // R: Black
+    inputData[pixelIndex + 1] = 0;   // G: Black
+    inputData[pixelIndex + 2] = 0;   // B: Black
+    inputData[pixelIndex + 3] = 0;   // A: Transparent (actually removes the pixels)
+  }
+}
+
+/**
+ * Draws a red box around a bounding rectangle for debugging
+ */
+function drawRedBox(inputData, width, channels, bounds) {
+  // Draw top and bottom horizontal lines
+  for (let x = bounds.minX; x <= bounds.maxX; x++) {
+    // Top line
+    if (bounds.minY >= 0) {
+      const topIndex = (bounds.minY * width + x) * channels;
+      inputData[topIndex] = 255;     // R
+      inputData[topIndex + 1] = 0;   // G
+      inputData[topIndex + 2] = 0;   // B
+      inputData[topIndex + 3] = 255; // A
+    }
+    
+    // Bottom line
+    if (bounds.maxY < 1024) {
+      const bottomIndex = (bounds.maxY * width + x) * channels;
+      inputData[bottomIndex] = 255;     // R
+      inputData[bottomIndex + 1] = 0;   // G
+      inputData[bottomIndex + 2] = 0;   // B
+      inputData[bottomIndex + 3] = 255; // A
+    }
+  }
+  
+  // Draw left and right vertical lines
+  for (let y = bounds.minY; y <= bounds.maxY; y++) {
+    // Left line
+    if (bounds.minX >= 0) {
+      const leftIndex = (y * width + bounds.minX) * channels;
+      inputData[leftIndex] = 255;     // R
+      inputData[leftIndex + 1] = 0;   // G
+      inputData[leftIndex + 2] = 0;   // B
+      inputData[leftIndex + 3] = 255; // A
+    }
+    
+    // Right line
+    if (bounds.maxX < 1024) {
+      const rightIndex = (y * width + bounds.maxX) * channels;
+      inputData[rightIndex] = 255;     // R
+      inputData[rightIndex + 1] = 0;   // G
+      inputData[rightIndex + 2] = 0;   // B
+      inputData[rightIndex + 3] = 255; // A
+    }
+  }
+}
+
+/**
+ * DEBUG: Saves intermediate result after bridge marking for inspection
+ */
+async function saveDebugImageAfterBridgeRemoval(inputData, width, height, channels) {
+  try {
+    const sharp = (await import('sharp')).default;
+    const debugBuffer = await sharp(inputData, {
+      raw: {
+        width: width,
+        height: height,
+        channels: channels
+      }
+    }).png().toBuffer();
+    
+    const fs = (await import('fs')).default;
+    const path = (await import('path')).default;
+    
+    const debugPath = path.join(process.cwd(), 'test', 'temp', 'debug-after-bridge-removal.png');
+    fs.writeFileSync(debugPath, debugBuffer);
+    console.log('🔍 DEBUG: Saved image after bridge marking to:', debugPath);
+  } catch (error) {
+    console.log('⚠️  Could not save debug image:', error.message);
   }
 }
 
