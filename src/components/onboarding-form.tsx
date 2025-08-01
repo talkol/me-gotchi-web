@@ -22,7 +22,8 @@ import { Progress } from "@/components/ui/progress";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { UploadCloud, Sparkles, AlertCircle, CheckCircle, Wand2, RefreshCw, ArrowLeft, ArrowRight, Download } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { UploadCloud, Sparkles, AlertCircle, CheckCircle, Wand2, RefreshCw, ArrowLeft, ArrowRight, Download, HelpCircle } from "lucide-react";
 import { HexColorPicker, HexColorInput } from "react-colorful";
 
 type OnboardingFormProps = {
@@ -279,6 +280,22 @@ const GenerationUnit = ({
     </div>
 );
 
+const FieldTooltip = ({ content, children }: { content: string; children: React.ReactNode }) => {
+  return (
+    <div className="flex items-center gap-2">
+      {children}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <HelpCircle className="h-4 w-4 text-muted-foreground/30 hover:text-foreground cursor-help flex-shrink-0" />
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-xs">
+          <p className="text-sm">{content}</p>
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  );
+};
+
 const ColorPickerInput = ({ field, textColor }: { field: any, textColor?: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -331,6 +348,19 @@ const PreferenceItem = ({
 }) => {
   const showExplanation = watch(`${name}.${index}.addExplanation`);
 
+  // Determine tooltip content based on the name type
+  const getNameTooltip = () => {
+    return "Label of this item (max 11 characters).";
+  };
+
+  const getCheckboxTooltip = () => {
+    return "Check this if you want to provide a detailed description of how the icon should look. This helps the AI generate more accurate icons.";
+  };
+
+  const getDescriptionTooltip = () => {
+    return "Describe exactly how you want this icon to appear. Be specific about colors, presentation, and visual details.";
+  };
+
   return (
     <div className="space-y-2 p-3 border rounded-md bg-background">
        <FormField
@@ -338,6 +368,9 @@ const PreferenceItem = ({
         name={`${name}.${index}.name`}
         render={({ field }) => (
           <FormItem>
+            <FieldTooltip content={getNameTooltip()}>
+              <FormLabel className="text-sm font-medium">Name</FormLabel>
+            </FieldTooltip>
             <FormControl style={{ textTransform: 'uppercase' }}>
               <Input {...field} placeholder={placeholderName} className="text-base" />
             </FormControl>
@@ -349,13 +382,23 @@ const PreferenceItem = ({
           control={control}
           name={`${name}.${index}.addExplanation`}
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-              <FormControl>
+            <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+              <FormControl className="mt-1">
                 <Checkbox checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
-              <FormLabel className="text-sm font-medium leading-none">
-                Add explicit description of the icon
-              </FormLabel>
+              <div className="flex items-center gap-2 self-end">
+                <FormLabel className="text-sm font-medium leading-none">
+                  Add explicit description for the icon
+                </FormLabel>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-3 w-3 text-muted-foreground/30 hover:text-foreground cursor-help flex-shrink-0" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs">
+                    <p className="text-sm">{getCheckboxTooltip()}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </FormItem>
           )}
         />
@@ -365,6 +408,9 @@ const PreferenceItem = ({
           name={`${name}.${index}.explanation`}
           render={({ field }) => (
             <FormItem>
+              <FieldTooltip content={getDescriptionTooltip()}>
+                <FormLabel className="text-sm font-medium">Description</FormLabel>
+              </FieldTooltip>
               <FormControl>
                 <Textarea {...field} placeholder={placeholderDescription} className="text-base" />
               </FormControl>
@@ -415,14 +461,18 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
         <div className="space-y-6">
             <FormField control={control} name="firstName" render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="text-base font-semibold">First Name</FormLabel>
+                    <FieldTooltip content="Enter the character's first name that will appear in the main screen (max 11 characters).">
+                        <FormLabel className="text-base font-semibold">First Name</FormLabel>
+                    </FieldTooltip>
                     <FormControl><Input placeholder="eg: Leo" {...field} value={field.value ?? ''} className="text-base"/></FormControl>
                     <FormMessage />
                 </FormItem>
             )} />
              <FormField control={control} name="gender" render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="text-base font-semibold">Gender</FormLabel>
+                    <FieldTooltip content="Select the character's gender. This helps the AI generate appropriate clothing and features.">
+                        <FormLabel className="text-base font-semibold">Gender</FormLabel>
+                    </FieldTooltip>
                     <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                         <SelectContent>
@@ -436,14 +486,18 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
             )} />
               <FormField control={control} name="age" render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="text-base font-semibold">Age</FormLabel>
+                    <FieldTooltip content="The character's age affects their appearance and proportions. Younger characters will look more child-like.">
+                        <FormLabel className="text-base font-semibold">Age</FormLabel>
+                    </FieldTooltip>
                     <FormControl><Input type="number" placeholder="eg: 8" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} className="text-base"/></FormControl>
                     <FormMessage />
                 </FormItem>
             )} />
               <FormField control={control} name="favoriteColor" render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="text-base font-semibold">Favorite Color</FormLabel>
+                    <FieldTooltip content="Pick a color that represents the character's personality. Used as the background for the name and age (which appear in white text).">
+                        <FormLabel className="text-base font-semibold">Favorite Color</FormLabel>
+                    </FieldTooltip>
                     <FormControl><ColorPickerInput field={field} textColor="#FFFFFF" /></FormControl>
                     <FormMessage />
                 </FormItem>
@@ -452,7 +506,9 @@ const Step1 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
         </div>
         <FormField control={control} name="photo" render={({ field: { onChange, value, ...rest }, fieldState }) => (
             <FormItem>
-              <FormLabel className="text-base font-semibold">Face Photo</FormLabel>
+              <FieldTooltip content="Upload a clear, front-facing photo showing the face and upper body. This will be used to generate your unique Me-gotchi character. Supports JPG, PNG, and WEBP formats (max 4MB).">
+                <FormLabel className="text-base font-semibold">Face Photo</FormLabel>
+              </FieldTooltip>
               <FormControl>
                 <div className="relative flex items-center justify-center w-full h-full min-h-[256px]">
                   <label htmlFor="dropzone-file" className={`relative flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-accent transition-colors ${fieldState.error ? 'border-destructive' : 'border-border'}`}>
@@ -484,25 +540,33 @@ const Step2 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
   return (
     <div className="space-y-6">
         <div>
-            <h3 className="font-semibold text-lg mb-2">Foods Liked (3)</h3>
+            <FieldTooltip content="Select 3 foods that the character loves to eat. These will become happy/boost items in the game that increase the character's stats.">
+                <h3 className="font-semibold text-lg mb-2">Foods Liked (3)</h3>
+            </FieldTooltip>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {likedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFoods" placeholderName="eg: PIZZA" placeholderDescription="eg: A single slice of pizza with pepperoni on top" />)}
             </div>
         </div>
         <div>
-            <h3 className="font-semibold text-lg mb-2">Foods Disliked (3)</h3>
+            <FieldTooltip content="Select 3 foods that the character dislikes. These will become negative items in the game that decrease the character's stats if given.">
+                <h3 className="font-semibold text-lg mb-2">Foods Disliked (3)</h3>
+            </FieldTooltip>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {dislikedFoods.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFoods" placeholderName="eg: BROCCOLI" placeholderDescription="Steamed broccoli florets" />)}
             </div>
         </div>
         <div>
-            <h3 className="font-semibold text-lg mb-2">Drinks Liked (2)</h3>
+            <FieldTooltip content="Select 2 drinks that the character enjoys. These will appear as positive drink options in the game.">
+                <h3 className="font-semibold text-lg mb-2">Drinks Liked (2)</h3>
+            </FieldTooltip>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {likedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedDrinks" placeholderName="eg: APPLE JUICE" placeholderDescription="A glass of apple juice without any labels" />)}
             </div>
         </div>
          <div>
-            <h3 className="font-semibold text-lg mb-2">Drinks Disliked (1)</h3>
+            <FieldTooltip content="Select 1 drink that the character doesn't like. This will be a negative drink option in the game.">
+                <h3 className="font-semibold text-lg mb-2">Drinks Disliked (1)</h3>
+            </FieldTooltip>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {dislikedDrinks.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedDrinks" placeholderName="eg: MILK" placeholderDescription="A glass of plain milk" />)}
             </div>
@@ -511,7 +575,9 @@ const Step2 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
          <div className="mt-6">
             <FormField control={control} name="foodBackgroundColor" render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="text-base font-semibold">Food Icons Background Color</FormLabel>
+                    <FieldTooltip content="Choose the background color for all food and drink icons. This color will appear behind each icon to make them more visually appealing and consistent.">
+                        <FormLabel className="text-base font-semibold">Food Icons Background Color</FormLabel>
+                    </FieldTooltip>
                     <FormControl><ColorPickerInput field={field} textColor="#000000" /></FormControl>
                 </FormItem>
             )} /></div>
@@ -526,25 +592,33 @@ const Step3 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
   return (
     <div className="space-y-6">
         <div>
-            <h3 className="font-semibold text-lg mb-2">Leisure Activities Liked (3)</h3>
+            <FieldTooltip content="Add 3 fun activities that the character enjoys. These will become positive leisure activities in the game that boost the character's happiness.">
+                <h3 className="font-semibold text-lg mb-2">Leisure Activities Liked (3)</h3>
+            </FieldTooltip>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {likedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedFunActivities" placeholderName="eg: PLAYSTATION" placeholderDescription="A white ps5 console standing upright" />)}
             </div>
         </div>
         <div>
-            <h3 className="font-semibold text-lg mb-2">Leisure Activities Disliked (2)</h3>
+            <FieldTooltip content="Add 2 leisure activities that the character doesn't enjoy. These will be activities that may decrease the character's mood in the game.">
+                <h3 className="font-semibold text-lg mb-2">Leisure Activities Disliked (2)</h3>
+            </FieldTooltip>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {dislikedFun.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedFunActivities" placeholderName="eg: READING" placeholderDescription="An open book on a table" />)}
             </div>
         </div>
         <div>
-            <h3 className="font-semibold text-lg mb-2">Exercise Activities Liked (2)</h3>
+            <FieldTooltip content="Add 2 physical activities or sports that the character loves. These will become positive exercise options that improve the character's health and energy.">
+                <h3 className="font-semibold text-lg mb-2">Exercise Activities Liked (2)</h3>
+            </FieldTooltip>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {likedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="likedExerciseActivities" placeholderName="eg: FOOTBALL" placeholderDescription="A soccer ball" />)}
             </div>
         </div>
         <div>
-            <h3 className="font-semibold text-lg mb-2">Exercise Activities Disliked (1)</h3>
+            <FieldTooltip content="Add 1 exercise activity that the character avoids or dislikes. This will be a negative exercise option in the game.">
+                <h3 className="font-semibold text-lg mb-2">Exercise Activities Disliked (1)</h3>
+            </FieldTooltip>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {dislikedExercise.map((item, index) => <PreferenceItem key={item.id} {...{control, watch, index}} name="dislikedExerciseActivities" placeholderName="eg: RUNNING" placeholderDescription="A person running from profile view" />)}
             </div>
@@ -553,7 +627,9 @@ const Step3 = ({ control, watch }: { control: Control<OnboardingFormData>, watch
         <div className="mt-6">
             <FormField control={control} name="activitiesBackgroundColor" render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="text-base font-semibold">Activities Icons Background Color</FormLabel>
+                    <FieldTooltip content="Choose the background color for all activity icons. This color will appear behind each activity icon to create a consistent visual theme.">
+                        <FormLabel className="text-base font-semibold">Activities Icons Background Color</FormLabel>
+                    </FieldTooltip>
                     <FormControl><ColorPickerInput field={field} textColor="#000000" /></FormControl>
                 </FormItem>
             )} /></div>
@@ -571,6 +647,13 @@ const Step4 = ({ control }: { control: Control<OnboardingFormData> }) => {
     "eg: Vibrant colorful playground for older children that has games and fun",
   ];
 
+  const environmentTooltips = [
+    "Describe the main environment where the character lives (e.g., home, neighborhood, city). Be specific about colors, lighting, and atmosphere to help create an accurate background image.",
+    "Describe a place where the character has fun and plays (e.g., playroom, park, arcade). Include details about games, toys, or activities that might be visible.",
+    "Describe an educational environment (e.g., classroom, library, school). Include elements like desks, books, or learning materials that match the character's age.",
+    "Describe an outdoor activity space (e.g., playground, sports field, garden). Focus on equipment, natural elements, and the overall mood of the space."
+  ];
+
   return (
     <div className="space-y-4">
         <CardDescription>Describe environments the character will normally visit.</CardDescription>
@@ -582,7 +665,9 @@ const Step4 = ({ control }: { control: Control<OnboardingFormData> }) => {
                 control={control}
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="text-base font-semibold">Environment {index + 1}</FormLabel>
+                    <FieldTooltip content={environmentTooltips[index]}>
+                        <FormLabel className="text-base font-semibold">Environment {index + 1}</FormLabel>
+                    </FieldTooltip>
                     <FormControl>
                     <Textarea {...field} placeholder={environmentPlaceholders[index]} className="min-h-[80px] text-base" />
                     </FormControl> 
@@ -1279,12 +1364,13 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
   }
 
   return (
-    <div>
-      <div className="mb-8 space-y-2">
-        <Progress value={currentStep * 20} className="w-full" />
-        <p className="text-center text-sm text-muted-foreground font-medium">{`Step ${currentStep} of 5: ${STEPS[currentStep-1].title}`}</p>
-      </div>
-       <Form {...form}>
+    <TooltipProvider delayDuration={200}>
+      <div>
+        <div className="mb-8 space-y-2">
+          <Progress value={currentStep * 20} className="w-full" />
+          <p className="text-center text-sm text-muted-foreground font-medium">{`Step ${currentStep} of 5: ${STEPS[currentStep-1].title}`}</p>
+        </div>
+         <Form {...form}>
         <form noValidate className="space-y-8">
             <input type="hidden" {...form.register("inviteCode")} />
             <input type="hidden" {...form.register("step")} />
@@ -1380,6 +1466,7 @@ export function OnboardingForm({ inviteCode }: OnboardingFormProps) {
              </DialogFooter>
         </DialogContent>
     </Dialog>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
