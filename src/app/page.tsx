@@ -88,21 +88,21 @@ export default function Home() {
       <section className="py-20 px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-center">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-16 px-28">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-16 px-20">
               <img 
                 src="/example1.png" 
                 alt="Me-gotchi Example 1" 
-                className="object-contain"
+                className="object-contain p-8"
               />
               <img 
-                src="/example1.png" 
+                src="/example2.png" 
                 alt="Me-gotchi Example 2" 
-                className="object-contain"
+                className="object-contain p-8"
               />
               <img 
-                src="/example1.png" 
+                src="/example3.png" 
                 alt="Me-gotchi Example 3" 
-                className="object-contain"
+                className="object-contain p-8"
               />
             </div>
           </div>
