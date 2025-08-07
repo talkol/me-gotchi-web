@@ -3,12 +3,12 @@ import sharp from 'sharp';
 /**
  * Centers icons within their tiles in a 3x3 grid layout
  * @param {Buffer|string} inputImagePath - Input PNG image buffer or file path (1024x1024)
- * @param {string} alignmentMode - 'center' or 'center-bottom'
+ * @param {string} alignmentMode - 'icons' or 'faces'
  * @returns {Promise<Buffer>} - Processed PNG image buffer
  */
-export async function centerIconsInTiles(inputImagePath, alignmentMode = 'center') {
-  if (!['center', 'center-bottom'].includes(alignmentMode)) {
-    throw new Error('Alignment mode must be "center" or "center-bottom"');
+export async function centerIconsInTiles(inputImagePath, alignmentMode = 'icons') {
+  if (!['icons', 'faces'].includes(alignmentMode)) {
+    throw new Error('Alignment mode must be "icons" or "faces"');
   }
 
   // Load the input image
@@ -35,8 +35,8 @@ export async function centerIconsInTiles(inputImagePath, alignmentMode = 'center
   const outputBuffer = Buffer.alloc(data.length);
   outputBuffer.fill(0); // Initialize with transparent pixels
 
-  // Apply row-by-row bridge removal for center-bottom mode (ONCE for entire image)
-  if (alignmentMode === 'center-bottom') {
+  // Apply row-by-row bridge removal for faces mode (ONCE for entire image)
+  if (alignmentMode === 'faces') {
     removeBridgesBetweenPartsInRows(data, width, height, channels);
     removeBridgesBetweenPartsInCols(data, width, height, channels);
     
@@ -140,7 +140,7 @@ async function processTileWithExpandedSearch(inputData, outputData, width, heigh
     // Filter out background elements with different rules based on content type
     const tilesSpanned = pixelCounts.size;
     
-    if (alignmentMode === 'center') {
+    if (alignmentMode === 'icons') {
       // For food icons: stricter filtering - food items should be self-contained
       if (tilesSpanned >= 3) {
         continue; // Skip parts that span 3+ tiles for food icons
@@ -202,12 +202,12 @@ async function processTileWithExpandedSearch(inputData, outputData, width, heigh
 
   let targetX, targetY;
   
-  if (alignmentMode === 'center') {
+  if (alignmentMode === 'icons') {
     targetX = currentTile.startX + Math.floor((currentTile.width - groupWidth) / 2);
     targetY = currentTile.startY + Math.floor((currentTile.height - groupHeight) / 2);
-  } else { // center-bottom
+  } else { // faces
     targetX = currentTile.startX + Math.floor((currentTile.width - groupWidth) / 2);
-    // For center-bottom: ensure the bottom pixel of the group aligns with the bottom pixel of the tile
+    // For faces: ensure the bottom pixel of the group aligns with the bottom pixel of the tile
     // But handle cases where the group is taller than the tile
     const idealTargetY = currentTile.startY + currentTile.height - groupHeight;
     

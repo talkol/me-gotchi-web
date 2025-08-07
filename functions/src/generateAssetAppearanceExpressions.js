@@ -193,7 +193,7 @@ Content:
 
     // Apply centering algorithm to properly align expressions within their tiles
     logger.info("Applying icon centering algorithm to face expressions atlas");
-    const centeredImageBuffer = await centerIconsInTiles(imageBuffer, 'center-bottom');
+    const centeredImageBuffer = await centerIconsInTiles(imageBuffer, 'faces');
 
     const storagePath = `${data.inviteCode}/face-atlas.png`;
     const bucket = getStorage().bucket();

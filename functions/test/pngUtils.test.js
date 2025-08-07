@@ -12,7 +12,7 @@ const TEST_OUTPUT_DIR = path.join(process.cwd(), 'test', 'temp');
  * @param {string} inputFileName - Name of input file (e.g., 'face-atlas.png')
  * @param {string} expectedFileName - Name of expected result file (e.g., 'face-atlas-RESULT.png')
  * @param {string} outputFileName - Name of output file for debugging (e.g., 'face-centered-output.png')
- * @param {string} alignmentMode - Alignment mode ('center' or 'center-bottom')
+ * @param {string} alignmentMode - Alignment mode ('icons' or 'faces')
  */
 async function testCenterIconsInTiles(inputFileName, expectedFileName, outputFileName, alignmentMode) {
   const inputPath = path.join(TEST_DATA_DIR, inputFileName);
@@ -97,66 +97,66 @@ describe('PNG Utils', () => {
   });
 
   describe('centerIconsInTiles', () => {
-    test('should center activities icons using "center" mode', async () => {
+    test('should center activities icons using "icons" mode', async () => {
       await testCenterIconsInTiles(
         'activities-atlas.png',
         'activities-atlas-RESULT.png',
         'activities-centered-output.png',
-        'center'
+        'icons'
       );
     });
 
-    test('should center face icons using "center-bottom" mode', async () => {
+    test('should center face icons using "faces" mode', async () => {
       await testCenterIconsInTiles(
         'face-atlas.png',
         'face-atlas-RESULT.png',
         'face-centered-bottom-output.png',
-        'center-bottom'
+        'faces'
       );
     });
 
-    test('should center face2 icons using "center-bottom" mode with bridge separation', async () => {
+    test('should center face2 icons using "faces" mode with bridge separation', async () => {
       await testCenterIconsInTiles(
         'face-atlas2.png',
         'face-atlas2-RESULT.png',
         'face2-centered-bottom-output.png',
-        'center-bottom'
+        'faces'
       );
     });
 
-    test('should center face3 icons using "center-bottom" mode with enhanced filtering', async () => {
+    test('should center face3 icons using "faces" mode with enhanced filtering', async () => {
       await testCenterIconsInTiles(
         'face-atlas3.png',
         'face-atlas3-RESULT.png',
         'face3-centered-bottom-output.png',
-        'center-bottom'
+        'faces'
       );
     });
 
-    test('should center face4 icons using "center-bottom" mode with enhanced filtering', async () => {
+    test('should center face4 icons using "faces" mode with enhanced filtering', async () => {
       await testCenterIconsInTiles(
         'face-atlas4.png',
         'face-atlas4-RESULT.png',
         'face4-centered-bottom-output.png',
-        'center-bottom'
+        'faces'
       );
     });
 
-    test('should center food icons using "center" mode', async () => {
+    test('should center food icons using "icons" mode', async () => {
       await testCenterIconsInTiles(
         'food-atlas.png',
         'food-atlas-RESULT.png',
         'food-centered-output.png',
-        'center'
+        'icons'
       );
     });
 
-    test('should center food2 icons using "center" mode with improved filtering', async () => {
+    test('should center food2 icons using "icons" mode with improved filtering', async () => {
       await testCenterIconsInTiles(
         'food-atlas2.png',
         'food-atlas2-RESULT.png',
         'food2-centered-output.png',
-        'center'
+        'icons'
       );
     });
 
@@ -164,8 +164,8 @@ describe('PNG Utils', () => {
       const inputPath = path.join(TEST_DATA_DIR, 'activities-atlas.png');
       
       // Test both modes
-      const centerResult = await centerIconsInTiles(inputPath, 'center');
-      const centerBottomResult = await centerIconsInTiles(inputPath, 'center-bottom');
+      const centerResult = await centerIconsInTiles(inputPath, 'icons');
+      const centerBottomResult = await centerIconsInTiles(inputPath, 'faces');
 
       // Results should be different
       expect(centerResult.equals(centerBottomResult)).toBe(false);
@@ -180,7 +180,7 @@ describe('PNG Utils', () => {
       
       await expect(centerIconsInTiles(inputPath, 'invalid-mode'))
         .rejects
-        .toThrow('Alignment mode must be "center" or "center-bottom"');
+        .toThrow('Alignment mode must be "icons" or "faces"');
     });
 
     test('should throw error for non-1024x1024 images', async () => {
@@ -194,7 +194,7 @@ describe('PNG Utils', () => {
         }
       }).png().toBuffer();
 
-      await expect(centerIconsInTiles(wrongSizeBuffer, 'center'))
+      await expect(centerIconsInTiles(wrongSizeBuffer, 'icons'))
         .rejects
         .toThrow('Input image must be 1024x1024 pixels');
     });
@@ -210,7 +210,7 @@ describe('PNG Utils', () => {
         }
       }).png().toBuffer();
 
-      await expect(centerIconsInTiles(noAlphaBuffer, 'center'))
+      await expect(centerIconsInTiles(noAlphaBuffer, 'icons'))
         .rejects
         .toThrow('Input image must have an alpha channel');
     });
@@ -228,10 +228,10 @@ describe('PNG Utils', () => {
       const food2ExpectedPath = path.join(TEST_DATA_DIR, 'food-atlas2-RESULT.png');
 
       // Process all images
-      const activitiesResult = await centerIconsInTiles(activitiesPath, 'center');
-      const faceResult = await centerIconsInTiles(facePath, 'center-bottom');
-      const foodResult = await centerIconsInTiles(foodPath, 'center');
-      const food2Result = await centerIconsInTiles(food2Path, 'center');
+      const activitiesResult = await centerIconsInTiles(activitiesPath, 'icons');
+      const faceResult = await centerIconsInTiles(facePath, 'faces');
+      const foodResult = await centerIconsInTiles(foodPath, 'icons');
+      const food2Result = await centerIconsInTiles(food2Path, 'icons');
 
       // Verify all results are valid
       expect(Buffer.isBuffer(activitiesResult)).toBe(true);
@@ -279,7 +279,7 @@ describe('PNG Utils', () => {
 
     test('should preserve image quality and transparency', async () => {
       const inputPath = path.join(TEST_DATA_DIR, 'activities-atlas.png');
-      const result = await centerIconsInTiles(inputPath, 'center');
+      const result = await centerIconsInTiles(inputPath, 'icons');
 
       // Load original and result for comparison
       const originalData = await sharp(inputPath).raw().toBuffer({ resolveWithObject: true });

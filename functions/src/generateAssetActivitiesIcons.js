@@ -121,7 +121,7 @@ export const generateAssetActivitiesIconsImp = onCall({timeoutSeconds: 300}, asy
     
     // Apply centering algorithm to properly align icons within their tiles
     logger.info("Applying icon centering algorithm to activities atlas");
-    const centeredImageBuffer = await centerIconsInTiles(imageBuffer, 'center');
+    const centeredImageBuffer = await centerIconsInTiles(imageBuffer, 'icons');
     
     const storagePath = `${data.inviteCode}/activities-atlas.png`;
     const bucket = getStorage().bucket();

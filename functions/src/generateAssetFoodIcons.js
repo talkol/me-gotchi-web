@@ -121,7 +121,7 @@ export const generateAssetFoodIconsImp = onCall({timeoutSeconds: 300}, async (re
     
     // Apply centering algorithm to properly align icons within their tiles
     logger.info("Applying icon centering algorithm to food atlas");
-    const centeredImageBuffer = await centerIconsInTiles(imageBuffer, 'center');
+    const centeredImageBuffer = await centerIconsInTiles(imageBuffer, 'icons');
     
     const storagePath = `${data.inviteCode}/food-atlas.png`;
     const bucket = getStorage().bucket();
