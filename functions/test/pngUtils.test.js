@@ -7,6 +7,51 @@ import sharp from 'sharp';
 const TEST_DATA_DIR = path.join(process.cwd(), 'test', 'data');
 const TEST_OUTPUT_DIR = path.join(process.cwd(), 'test', 'temp');
 
+/**
+ * Helper function to test centerIconsInTiles function against expected results
+ * @param {string} inputFileName - Name of input file (e.g., 'face-atlas.png')
+ * @param {string} expectedFileName - Name of expected result file (e.g., 'face-atlas-RESULT.png')
+ * @param {string} outputFileName - Name of output file for debugging (e.g., 'face-centered-output.png')
+ * @param {string} alignmentMode - Alignment mode ('center' or 'center-bottom')
+ */
+async function testCenterIconsInTiles(inputFileName, expectedFileName, outputFileName, alignmentMode) {
+  const inputPath = path.join(TEST_DATA_DIR, inputFileName);
+  const expectedPath = path.join(TEST_DATA_DIR, expectedFileName);
+  const outputPath = path.join(TEST_OUTPUT_DIR, outputFileName);
+
+  // Process the image
+  const resultBuffer = await centerIconsInTiles(inputPath, alignmentMode);
+  
+  // Verify the result is a valid PNG buffer
+  expect(Buffer.isBuffer(resultBuffer)).toBe(true);
+  expect(resultBuffer.length).toBeGreaterThan(0);
+
+  // Save output for manual inspection if test fails
+  fs.writeFileSync(outputPath, resultBuffer);
+
+  // Verify output image properties
+  const outputMetadata = await sharp(resultBuffer).metadata();
+  expect(outputMetadata.width).toBe(1024);
+  expect(outputMetadata.height).toBe(1024);
+  expect(outputMetadata.channels).toBeGreaterThanOrEqual(4);
+
+  // Load expected result and compare
+  const expectedBuffer = fs.readFileSync(expectedPath);
+  const expectedMetadata = await sharp(expectedBuffer).metadata();
+  
+  // Compare metadata
+  expect(outputMetadata.width).toBe(expectedMetadata.width);
+  expect(outputMetadata.height).toBe(expectedMetadata.height);
+  expect(outputMetadata.channels).toBe(expectedMetadata.channels);
+  
+  // Compare image content - convert both to raw data for pixel-perfect comparison
+  const resultRaw = await sharp(resultBuffer).raw().toBuffer();
+  const expectedRaw = await sharp(expectedBuffer).raw().toBuffer();
+  
+  // Images should be identical
+  expect(resultRaw.equals(expectedRaw)).toBe(true);
+}
+
 describe('PNG Utils', () => {
   beforeAll(async () => {
     // Ensure test output directory exists
@@ -53,193 +98,66 @@ describe('PNG Utils', () => {
 
   describe('centerIconsInTiles', () => {
     test('should center activities icons using "center" mode', async () => {
-      const inputPath = path.join(TEST_DATA_DIR, 'activities-atlas.png');
-      const expectedPath = path.join(TEST_DATA_DIR, 'activities-atlas-RESULT.png');
-      const outputPath = path.join(TEST_OUTPUT_DIR, 'activities-centered-output.png');
-
-      // Process the image
-      const resultBuffer = await centerIconsInTiles(inputPath, 'center');
-      
-      // Verify the result is a valid PNG buffer
-      expect(Buffer.isBuffer(resultBuffer)).toBe(true);
-      expect(resultBuffer.length).toBeGreaterThan(0);
-
-      // Save output for manual inspection if test fails
-      fs.writeFileSync(outputPath, resultBuffer);
-
-      // Verify output image properties
-      const outputMetadata = await sharp(resultBuffer).metadata();
-      expect(outputMetadata.width).toBe(1024);
-      expect(outputMetadata.height).toBe(1024);
-      expect(outputMetadata.channels).toBeGreaterThanOrEqual(4);
-
-      // Load expected result and compare
-      const expectedBuffer = fs.readFileSync(expectedPath);
-      const expectedMetadata = await sharp(expectedBuffer).metadata();
-      
-      // Compare metadata
-      expect(outputMetadata.width).toBe(expectedMetadata.width);
-      expect(outputMetadata.height).toBe(expectedMetadata.height);
-      expect(outputMetadata.channels).toBe(expectedMetadata.channels);
-      
-      // Compare image content - convert both to raw data for pixel-perfect comparison
-      const resultRaw = await sharp(resultBuffer).raw().toBuffer();
-      const expectedRaw = await sharp(expectedBuffer).raw().toBuffer();
-      
-      // Images should be identical
-      expect(resultRaw.equals(expectedRaw)).toBe(true);
+      await testCenterIconsInTiles(
+        'activities-atlas.png',
+        'activities-atlas-RESULT.png',
+        'activities-centered-output.png',
+        'center'
+      );
     });
 
     test('should center face icons using "center-bottom" mode', async () => {
-      const inputPath = path.join(TEST_DATA_DIR, 'face-atlas.png');
-      const expectedPath = path.join(TEST_DATA_DIR, 'face-atlas-RESULT.png');
-      const outputPath = path.join(TEST_OUTPUT_DIR, 'face-centered-bottom-output.png');
-
-      // Process the image
-      const resultBuffer = await centerIconsInTiles(inputPath, 'center-bottom');
-      
-      // Verify the result is a valid PNG buffer
-      expect(Buffer.isBuffer(resultBuffer)).toBe(true);
-      expect(resultBuffer.length).toBeGreaterThan(0);
-
-      // Save output for manual inspection if test fails
-      fs.writeFileSync(outputPath, resultBuffer);
-
-      // Verify output image properties
-      const outputMetadata = await sharp(resultBuffer).metadata();
-      expect(outputMetadata.width).toBe(1024);
-      expect(outputMetadata.height).toBe(1024);
-      expect(outputMetadata.channels).toBeGreaterThanOrEqual(4);
-
-      // Load expected result and compare
-      const expectedBuffer = fs.readFileSync(expectedPath);
-      const expectedMetadata = await sharp(expectedBuffer).metadata();
-      
-      // Compare metadata
-      expect(outputMetadata.width).toBe(expectedMetadata.width);
-      expect(outputMetadata.height).toBe(expectedMetadata.height);
-      expect(outputMetadata.channels).toBe(expectedMetadata.channels);
-      
-      // Compare image content - convert both to raw data for pixel-perfect comparison
-      const resultRaw = await sharp(resultBuffer).raw().toBuffer();
-      const expectedRaw = await sharp(expectedBuffer).raw().toBuffer();
-      
-      // Images should be identical
-      expect(resultRaw.equals(expectedRaw)).toBe(true);
+      await testCenterIconsInTiles(
+        'face-atlas.png',
+        'face-atlas-RESULT.png',
+        'face-centered-bottom-output.png',
+        'center-bottom'
+      );
     });
 
     test('should center face2 icons using "center-bottom" mode with bridge separation', async () => {
-      const inputPath = path.join(TEST_DATA_DIR, 'face-atlas2.png');
-      const expectedPath = path.join(TEST_DATA_DIR, 'face-atlas2-RESULT.png');
-      const outputPath = path.join(TEST_OUTPUT_DIR, 'face2-centered-bottom-output.png');
+      await testCenterIconsInTiles(
+        'face-atlas2.png',
+        'face-atlas2-RESULT.png',
+        'face2-centered-bottom-output.png',
+        'center-bottom'
+      );
+    });
 
-      // Process the image with bridge separation algorithm
-      const resultBuffer = await centerIconsInTiles(inputPath, 'center-bottom');
-      
-      // Verify the result is a valid PNG buffer
-      expect(Buffer.isBuffer(resultBuffer)).toBe(true);
-      expect(resultBuffer.length).toBeGreaterThan(0);
+    test('should center face3 icons using "center-bottom" mode with enhanced filtering', async () => {
+      await testCenterIconsInTiles(
+        'face-atlas3.png',
+        'face-atlas3-RESULT.png',
+        'face3-centered-bottom-output.png',
+        'center-bottom'
+      );
+    });
 
-      // Save output for manual inspection if test fails
-      fs.writeFileSync(outputPath, resultBuffer);
-
-      // Verify output image properties
-      const outputMetadata = await sharp(resultBuffer).metadata();
-      expect(outputMetadata.width).toBe(1024);
-      expect(outputMetadata.height).toBe(1024);
-      expect(outputMetadata.channels).toBeGreaterThanOrEqual(4);
-
-      // Load expected result and compare
-      const expectedBuffer = fs.readFileSync(expectedPath);
-      const expectedMetadata = await sharp(expectedBuffer).metadata();
-      
-      // Compare metadata
-      expect(outputMetadata.width).toBe(expectedMetadata.width);
-      expect(outputMetadata.height).toBe(expectedMetadata.height);
-      expect(outputMetadata.channels).toBe(expectedMetadata.channels);
-      
-      // Compare image content - convert both to raw data for pixel-perfect comparison
-      const resultRaw = await sharp(resultBuffer).raw().toBuffer();
-      const expectedRaw = await sharp(expectedBuffer).raw().toBuffer();
-      
-      // Images should be identical
-      expect(resultRaw.equals(expectedRaw)).toBe(true);
+    test('should center face4 icons using "center-bottom" mode with enhanced filtering', async () => {
+      await testCenterIconsInTiles(
+        'face-atlas4.png',
+        'face-atlas4-RESULT.png',
+        'face4-centered-bottom-output.png',
+        'center-bottom'
+      );
     });
 
     test('should center food icons using "center" mode', async () => {
-      const inputPath = path.join(TEST_DATA_DIR, 'food-atlas.png');
-      const expectedPath = path.join(TEST_DATA_DIR, 'food-atlas-RESULT.png');
-      const outputPath = path.join(TEST_OUTPUT_DIR, 'food-centered-output.png');
-
-      // Process the image
-      const resultBuffer = await centerIconsInTiles(inputPath, 'center');
-      
-      // Verify the result is a valid PNG buffer
-      expect(Buffer.isBuffer(resultBuffer)).toBe(true);
-      expect(resultBuffer.length).toBeGreaterThan(0);
-
-      // Save output for manual inspection if test fails
-      fs.writeFileSync(outputPath, resultBuffer);
-
-      // Verify output image properties
-      const outputMetadata = await sharp(resultBuffer).metadata();
-      expect(outputMetadata.width).toBe(1024);
-      expect(outputMetadata.height).toBe(1024);
-      expect(outputMetadata.channels).toBeGreaterThanOrEqual(4);
-
-      // Load expected result and compare
-      const expectedBuffer = fs.readFileSync(expectedPath);
-      const expectedMetadata = await sharp(expectedBuffer).metadata();
-      
-      // Compare metadata
-      expect(outputMetadata.width).toBe(expectedMetadata.width);
-      expect(outputMetadata.height).toBe(expectedMetadata.height);
-      expect(outputMetadata.channels).toBe(expectedMetadata.channels);
-      
-      // Compare image content - convert both to raw data for pixel-perfect comparison
-      const resultRaw = await sharp(resultBuffer).raw().toBuffer();
-      const expectedRaw = await sharp(expectedBuffer).raw().toBuffer();
-      
-      // Images should be identical
-      expect(resultRaw.equals(expectedRaw)).toBe(true);
+      await testCenterIconsInTiles(
+        'food-atlas.png',
+        'food-atlas-RESULT.png',
+        'food-centered-output.png',
+        'center'
+      );
     });
 
     test('should center food2 icons using "center" mode with improved filtering', async () => {
-      const inputPath = path.join(TEST_DATA_DIR, 'food-atlas2.png');
-      const expectedPath = path.join(TEST_DATA_DIR, 'food-atlas2-RESULT.png');
-      const outputPath = path.join(TEST_OUTPUT_DIR, 'food2-centered-output.png');
-
-      // Process the image with improved multi-tile filtering
-      const resultBuffer = await centerIconsInTiles(inputPath, 'center');
-      
-      // Verify the result is a valid PNG buffer
-      expect(Buffer.isBuffer(resultBuffer)).toBe(true);
-      expect(resultBuffer.length).toBeGreaterThan(0);
-
-      // Save output for manual inspection if test fails
-      fs.writeFileSync(outputPath, resultBuffer);
-
-      // Verify output image properties
-      const outputMetadata = await sharp(resultBuffer).metadata();
-      expect(outputMetadata.width).toBe(1024);
-      expect(outputMetadata.height).toBe(1024);
-      expect(outputMetadata.channels).toBeGreaterThanOrEqual(4);
-
-      // Load expected result and compare
-      const expectedBuffer = fs.readFileSync(expectedPath);
-      const expectedMetadata = await sharp(expectedBuffer).metadata();
-      
-      // Compare metadata
-      expect(outputMetadata.width).toBe(expectedMetadata.width);
-      expect(outputMetadata.height).toBe(expectedMetadata.height);
-      expect(outputMetadata.channels).toBe(expectedMetadata.channels);
-      
-      // Compare image content - convert both to raw data for pixel-perfect comparison
-      const resultRaw = await sharp(resultBuffer).raw().toBuffer();
-      const expectedRaw = await sharp(expectedBuffer).raw().toBuffer();
-      
-      // Images should be identical
-      expect(resultRaw.equals(expectedRaw)).toBe(true);
+      await testCenterIconsInTiles(
+        'food-atlas2.png',
+        'food-atlas2-RESULT.png',
+        'food2-centered-output.png',
+        'center'
+      );
     });
 
     test('should handle different alignment modes correctly', async () => {

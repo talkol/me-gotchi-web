@@ -146,9 +146,17 @@ async function processTileWithExpandedSearch(inputData, outputData, width, heigh
         continue; // Skip parts that span 3+ tiles for food icons
       }
     } else {
-      // For face expressions: more lenient - facial features can span tiles
-      if (tilesSpanned > 5) {
-        continue; // Skip parts that span more than 5 tiles for face expressions
+      // For face expressions:
+      // Skip parts that span more than 5 tiles or are very large (width > 500 or height > 500)
+      const partWidth = part.bounds.maxX - part.bounds.minX + 1;
+      const partHeight = part.bounds.maxY - part.bounds.minY + 1;
+      if (tilesSpanned >= 5 || partWidth > 400 || partHeight > 400 || partWidth < 200 || partHeight < 200) {
+        continue; // Skip parts that are not relevant
+      }
+      
+      // Additional filtering: Skip parts whose edges are too far from tile boundaries
+      if (isPartTooFarFromTileBoundaries(part, width, height)) {
+        continue; // Skip parts that have any edge too far from tile boundaries
       }
     }
 
@@ -276,13 +284,9 @@ function processRowForBridges(inputData, width, height, channels, rowStartY, row
   // Step 1: Find connected components within this row
   const rowParts = findConnectedPartsInRow(inputData, width, height, channels, rowStartY, rowEndY);
   
-  // Step 2: If we have fewer than 3 parts, we need to find and remove bridges
-  if (rowParts.length < 3) {
-    for (const part of rowParts) {
-      if (shouldSplitPart(part, width)) {
-        removeBridgesFromPart(part, inputData, width, height, channels, rowParts.length);
-      }
-    }
+  // Step 2: Remove bridges from all parts
+  for (const part of rowParts) {
+    removeBridgesFromPartHorizontally(part, inputData, width, height, channels);
   }
 }
 
@@ -293,13 +297,9 @@ function processColForBridges(inputData, width, height, channels, colStartX, col
   // Step 1: Find connected components within this column
   const colParts = findConnectedPartsInCol(inputData, width, height, channels, colStartX, colEndX);
   
-  // Step 2: If we have fewer than 3 parts, we need to find and remove bridges
-  if (colParts.length < 3) {
-    for (const part of colParts) {
-      if (shouldSplitPartVertically(part, height)) {
-        removeBridgesFromPartVertically(part, inputData, width, height, channels, colParts.length);
-      }
-    }
+  // Step 2: Remove bridges from all parts
+  for (const part of colParts) {
+    removeBridgesFromPartVertically(part, inputData, width, height, channels);
   }
 }
 
@@ -378,36 +378,27 @@ function findConnectedPartsInCol(inputData, width, height, channels, colStartX, 
 }
 
 /**
- * Determines if a part is large enough to potentially contain multiple faces
- */
-function shouldSplitPart(part, width) {
-  const partWidth = part.bounds.maxX - part.bounds.minX + 1;
-  const expectedSinglePartWidth = width / 3; // ~341 pixels
-  
-  // If the part is wider than 1.5 times the expected width, it likely contains multiple faces
-  return partWidth > expectedSinglePartWidth * 1.5;
-}
-
-/**
- * Determines if a part is tall enough to potentially contain multiple faces vertically
- */
-function shouldSplitPartVertically(part, height) {
-  const partHeight = part.bounds.maxY - part.bounds.minY + 1;
-  const expectedSinglePartHeight = height / 3; // ~341 pixels
-  
-  // If the part is taller than 1.5 times the expected height, it likely contains multiple faces
-  return partHeight > expectedSinglePartHeight * 1.5;
-}
-
-/**
  * Removes bridges from a large part by finding narrow connection points
  */
-function removeBridgesFromPart(part, inputData, width, height, channels, currentPartsInRow) {
+function removeBridgesFromPartHorizontally(part, inputData, width, height, channels) {
   const partWidth = part.bounds.maxX - part.bounds.minX + 1;
   
-  // Calculate how many bridges we need based on current parts in row
-  const expectedParts = 3; // We always want 3 parts per row
-  const neededSplits = expectedParts - currentPartsInRow; // How many more parts we need
+  // Calculate how many bridges we need based on part width
+  const expectedSinglePartWidth = width / 3; // ~341 pixels for 1024px image
+  let neededSplits;
+  
+  if (partWidth < expectedSinglePartWidth * 1.5) {
+    neededSplits = 0; // Part is small enough, no splits needed
+  } else if (partWidth < expectedSinglePartWidth * 2.5) {
+    neededSplits = 1; // Part spans ~2 tiles, split into 2 parts
+  } else {
+    neededSplits = 2; // Part spans ~3 tiles, split into 3 parts
+  }
+  
+  // If no splits needed, return early
+  if (neededSplits === 0) {
+    return;
+  }
   
   if (neededSplits === 1) {
     // Split into 2 parts - find 1 bridge in the middle
@@ -438,12 +429,25 @@ function removeBridgesFromPart(part, inputData, width, height, channels, current
 /**
  * Removes bridges from a large part by finding narrow horizontal connection points
  */
-function removeBridgesFromPartVertically(part, inputData, width, height, channels, currentPartsInCol) {
+function removeBridgesFromPartVertically(part, inputData, width, height, channels) {
   const partHeight = part.bounds.maxY - part.bounds.minY + 1;
   
-  // Calculate how many bridges we need based on current parts in column
-  const expectedParts = 3; // We always want 3 parts per column
-  const neededSplits = expectedParts - currentPartsInCol; // How many more parts we need
+  // Calculate how many bridges we need based on part height
+  const expectedSinglePartHeight = height / 3; // ~341 pixels for 1024px image
+  let neededSplits;
+  
+  if (partHeight < expectedSinglePartHeight * 1.5) {
+    neededSplits = 0; // Part is small enough, no splits needed
+  } else if (partHeight < expectedSinglePartHeight * 2.5) {
+    neededSplits = 1; // Part spans ~2 tiles, split into 2 parts
+  } else {
+    neededSplits = 2; // Part spans ~3 tiles, split into 3 parts
+  }
+  
+  // If no splits needed, return early
+  if (neededSplits === 0) {
+    return;
+  }
   
   if (neededSplits === 1) {
     // Split into 2 parts - find 1 bridge in the middle
@@ -734,4 +738,42 @@ export async function analyzeImageStructure(inputImagePath) {
     hasAlpha: metadata.channels >= 4,
     tileSize: metadata.width / 3
   };
+}
+
+/**
+ * Checks if a part's edges are too far from tile boundaries
+ * @param {Object} part - The part with bounds property
+ * @param {number} width - Image width
+ * @param {number} height - Image height
+ * @returns {boolean} - True if part should be filtered out
+ */
+function isPartTooFarFromTileBoundaries(part, width, height) {
+  const tileSizeX = width / 3;  // ~341 pixels
+  const tileSizeY = height / 3; // ~341 pixels
+  const maxDistanceX = tileSizeX * 0.2; // 20% of tile width (~68 pixels)
+  const maxDistanceY = tileSizeY * 0.2; // 20% of tile height (~68 pixels)
+  
+  // Find distances to nearest tile boundaries (considering all tile boundaries in the grid)
+  const verticalBoundaries = [0, tileSizeX, tileSizeX * 2, tileSizeX * 3]; // x = 0, 341, 682, 1023
+  const horizontalBoundaries = [0, tileSizeY, tileSizeY * 2, tileSizeY * 3]; // y = 0, 341, 682, 1023
+  
+  // Calculate minimum distance from part's left edge to any vertical boundary
+  const leftEdgeDistances = verticalBoundaries.map(boundary => Math.abs(part.bounds.minX - boundary));
+  const minLeftEdgeDistance = Math.min(...leftEdgeDistances);
+  
+  // Calculate minimum distance from part's right edge to any vertical boundary
+  const rightEdgeDistances = verticalBoundaries.map(boundary => Math.abs(part.bounds.maxX - boundary));
+  const minRightEdgeDistance = Math.min(...rightEdgeDistances);
+  
+  // Calculate minimum distance from part's top edge to any horizontal boundary
+  const topEdgeDistances = horizontalBoundaries.map(boundary => Math.abs(part.bounds.minY - boundary));
+  const minTopEdgeDistance = Math.min(...topEdgeDistances);
+  
+  // Calculate minimum distance from part's bottom edge to any horizontal boundary
+  const bottomEdgeDistances = horizontalBoundaries.map(boundary => Math.abs(part.bounds.maxY - boundary));
+  const minBottomEdgeDistance = Math.min(...bottomEdgeDistances);
+  
+  // Return true if ANY edge is too far from boundaries
+  return minLeftEdgeDistance > maxDistanceX || minRightEdgeDistance > maxDistanceX || 
+         minTopEdgeDistance > maxDistanceY || minBottomEdgeDistance > maxDistanceY;
 }
