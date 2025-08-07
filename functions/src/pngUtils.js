@@ -38,6 +38,7 @@ export async function centerIconsInTiles(inputImagePath, alignmentMode = 'center
   // Apply row-by-row bridge removal for center-bottom mode (ONCE for entire image)
   if (alignmentMode === 'center-bottom') {
     removeBridgesBetweenPartsInRows(data, width, height, channels);
+    removeBridgesBetweenPartsInCols(data, width, height, channels);
     
     // Bridge separation complete
   }
@@ -253,6 +254,22 @@ function removeBridgesBetweenPartsInRows(inputData, width, height, channels) {
 }
 
 /**
+ * Marks bridges between parts in each column for center-bottom mode
+ * Processes each column independently to ensure we get 3 separate parts per column
+ */
+function removeBridgesBetweenPartsInCols(inputData, width, height, channels) {
+  const colWidth = Math.floor(width / 3); // Each column is approximately 341 pixels
+  
+  // Process all 3 columns
+  for (let colIndex = 0; colIndex < 3; colIndex++) {
+    const colStartX = colIndex * colWidth;
+    const colEndX = colIndex === 2 ? width : (colIndex + 1) * colWidth; // Handle the last column
+    
+    processColForBridges(inputData, width, height, channels, colStartX, colEndX);
+  }
+}
+
+/**
  * Processes a single row to find and remove bridges between connected parts
  */
 function processRowForBridges(inputData, width, height, channels, rowStartY, rowEndY) {
@@ -264,6 +281,23 @@ function processRowForBridges(inputData, width, height, channels, rowStartY, row
     for (const part of rowParts) {
       if (shouldSplitPart(part, width)) {
         removeBridgesFromPart(part, inputData, width, height, channels, rowParts.length);
+      }
+    }
+  }
+}
+
+/**
+ * Processes a single column to find and remove bridges between connected parts
+ */
+function processColForBridges(inputData, width, height, channels, colStartX, colEndX) {
+  // Step 1: Find connected components within this column
+  const colParts = findConnectedPartsInCol(inputData, width, height, channels, colStartX, colEndX);
+  
+  // Step 2: If we have fewer than 3 parts, we need to find and remove bridges
+  if (colParts.length < 3) {
+    for (const part of colParts) {
+      if (shouldSplitPartVertically(part, height)) {
+        removeBridgesFromPartVertically(part, inputData, width, height, channels, colParts.length);
       }
     }
   }
@@ -307,6 +341,43 @@ function findConnectedPartsInRow(inputData, width, height, channels, rowStartY, 
 }
 
 /**
+ * Finds connected components within a specific column (but allows full face detection across boundaries)
+ */
+function findConnectedPartsInCol(inputData, width, height, channels, colStartX, colEndX) {
+  const parts = [];
+  const visited = new Set();
+  
+  // Only start flood-fill from pixels within the column, but allow the flood-fill to explore the entire image
+  for (let x = colStartX; x < colEndX; x++) {
+    for (let y = 0; y < height; y++) {
+      const pixelIndex = (y * width + x) * channels;
+      const alpha = inputData[pixelIndex + 3];
+      const key = `${x},${y}`;
+      
+      if (alpha > 10 && !visited.has(key)) {
+        const part = exploreConnectedPixels(inputData, width, height, channels, x, y, visited, 0, width, 0, height);
+        if (part.pixels.length > 10) { // Filter out tiny noise
+          const partWidth = part.bounds.maxX - part.bounds.minX + 1;
+          // Only count substantial parts (not thin vertical strips)
+          if (partWidth > 50) {
+            // Only include parts that have significant presence in this column
+            const pixelsInCol = part.pixels.filter(p => p.x >= colStartX && p.x < colEndX).length;
+            const percentageInCol = pixelsInCol / part.pixels.length;
+            
+            // If at least 30% of the part is in this column, consider it belongs to this column
+            if (percentageInCol >= 0.3) {
+              parts.push(part);
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  return parts;
+}
+
+/**
  * Determines if a part is large enough to potentially contain multiple faces
  */
 function shouldSplitPart(part, width) {
@@ -315,6 +386,17 @@ function shouldSplitPart(part, width) {
   
   // If the part is wider than 1.5 times the expected width, it likely contains multiple faces
   return partWidth > expectedSinglePartWidth * 1.5;
+}
+
+/**
+ * Determines if a part is tall enough to potentially contain multiple faces vertically
+ */
+function shouldSplitPartVertically(part, height) {
+  const partHeight = part.bounds.maxY - part.bounds.minY + 1;
+  const expectedSinglePartHeight = height / 3; // ~341 pixels
+  
+  // If the part is taller than 1.5 times the expected height, it likely contains multiple faces
+  return partHeight > expectedSinglePartHeight * 1.5;
 }
 
 /**
@@ -354,6 +436,42 @@ function removeBridgesFromPart(part, inputData, width, height, channels, current
 }
 
 /**
+ * Removes bridges from a large part by finding narrow horizontal connection points
+ */
+function removeBridgesFromPartVertically(part, inputData, width, height, channels, currentPartsInCol) {
+  const partHeight = part.bounds.maxY - part.bounds.minY + 1;
+  
+  // Calculate how many bridges we need based on current parts in column
+  const expectedParts = 3; // We always want 3 parts per column
+  const neededSplits = expectedParts - currentPartsInCol; // How many more parts we need
+  
+  if (neededSplits === 1) {
+    // Split into 2 parts - find 1 bridge in the middle
+    const expectedBridgeY = part.bounds.minY + Math.floor(partHeight / 2);
+    const bridge = findNarrowestHorizontalBridge(part, inputData, width, height, channels, expectedBridgeY - 20, expectedBridgeY + 20);
+    
+    if (bridge) {
+      removeHorizontalBridgePixels(bridge, inputData, width, channels);
+    }
+  } else if (neededSplits === 2) {
+    // Split into 3 parts - find 2 bridges at 1/3 and 2/3 positions
+    const expectedBridgeY1 = part.bounds.minY + Math.floor(partHeight / 3);
+    const expectedBridgeY2 = part.bounds.minY + Math.floor(2 * partHeight / 3);
+    
+    const bridge1 = findNarrowestHorizontalBridge(part, inputData, width, height, channels, expectedBridgeY1 - 20, expectedBridgeY1 + 20);
+    const bridge2 = findNarrowestHorizontalBridge(part, inputData, width, height, channels, expectedBridgeY2 - 20, expectedBridgeY2 + 20);
+    
+    if (bridge1) {
+      removeHorizontalBridgePixels(bridge1, inputData, width, channels);
+    }
+    
+    if (bridge2) {
+      removeHorizontalBridgePixels(bridge2, inputData, width, channels);
+    }
+  }
+}
+
+/**
  * Finds the narrowest bridge (shortest pixel column) in a given X range
  */
 function findNarrowestBridge(part, inputData, width, height, channels, searchStartX, searchEndX) {
@@ -371,6 +489,31 @@ function findNarrowestBridge(part, inputData, width, height, channels, searchSta
         height: columnHeight,
         startY: getColumnStartY(part, x),
         endY: getColumnEndY(part, x)
+      };
+    }
+  }
+  
+  return narrowestBridge;
+}
+
+/**
+ * Finds the narrowest horizontal bridge (shortest pixel row) in a given Y range
+ */
+function findNarrowestHorizontalBridge(part, inputData, width, height, channels, searchStartY, searchEndY) {
+  let narrowestBridge = null;
+  let minWidth = Infinity;
+  
+  // Search for the narrowest horizontal connection
+  for (let y = Math.max(searchStartY, part.bounds.minY); y <= Math.min(searchEndY, part.bounds.maxY); y++) {
+    const rowWidth = getRowWidthInPart(part, y);
+    
+    if (rowWidth > 0 && rowWidth < minWidth) {
+      minWidth = rowWidth;
+      narrowestBridge = {
+        y: y,
+        width: rowWidth,
+        startX: getRowStartX(part, y),
+        endX: getRowEndX(part, y)
       };
     }
   }
@@ -408,11 +551,53 @@ function getColumnEndY(part, targetX) {
 }
 
 /**
+ * Gets the width of pixels in a specific row within a part
+ */
+function getRowWidthInPart(part, targetY) {
+  const pixelsInRow = part.pixels.filter(p => p.y === targetY);
+  if (pixelsInRow.length === 0) return 0;
+  
+  const minX = Math.min(...pixelsInRow.map(p => p.x));
+  const maxX = Math.max(...pixelsInRow.map(p => p.x));
+  
+  return maxX - minX + 1;
+}
+
+/**
+ * Gets the starting X coordinate of pixels in a row
+ */
+function getRowStartX(part, targetY) {
+  const pixelsInRow = part.pixels.filter(p => p.y === targetY);
+  return pixelsInRow.length > 0 ? Math.min(...pixelsInRow.map(p => p.x)) : 0;
+}
+
+/**
+ * Gets the ending X coordinate of pixels in a row
+ */
+function getRowEndX(part, targetY) {
+  const pixelsInRow = part.pixels.filter(p => p.y === targetY);
+  return pixelsInRow.length > 0 ? Math.max(...pixelsInRow.map(p => p.x)) : 0;
+}
+
+/**
  * Actually deletes bridge pixels by making them transparent
  */
 function removeBridgePixels(bridge, inputData, width, channels) {
   for (let y = bridge.startY; y <= bridge.endY; y++) {
     const pixelIndex = (y * width + bridge.x) * channels;
+    inputData[pixelIndex] = 0;       // R: Black
+    inputData[pixelIndex + 1] = 0;   // G: Black
+    inputData[pixelIndex + 2] = 0;   // B: Black
+    inputData[pixelIndex + 3] = 0;   // A: Transparent (actually removes the pixels)
+  }
+}
+
+/**
+ * Actually deletes horizontal bridge pixels by making them transparent
+ */
+function removeHorizontalBridgePixels(bridge, inputData, width, channels) {
+  for (let x = bridge.startX; x <= bridge.endX; x++) {
+    const pixelIndex = (bridge.y * width + x) * channels;
     inputData[pixelIndex] = 0;       // R: Black
     inputData[pixelIndex + 1] = 0;   // G: Black
     inputData[pixelIndex + 2] = 0;   // B: Black
