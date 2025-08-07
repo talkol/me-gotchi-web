@@ -16,7 +16,7 @@ import * as logger from "firebase-functions/logger";
  * @returns {Promise<{assetUrl: string}>} - A promise resolving with the public URL of the generated character asset.
  * @throws {HttpsError} - Throws HttpsError on validation, OpenAI, or storage errors.
  */
-export const generateAssetEnvironmentImp = onCall({timeoutSeconds: 300}, async (request) => {
+export const generateAssetEnvironmentImp = onCall({timeoutSeconds: 300, memory: "1GiB"}, async (request) => {
     if (!request.data.environmentNumber) {
       throw new HttpsError("invalid-argument", "environmentNumber is required.");
     }

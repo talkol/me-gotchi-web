@@ -18,7 +18,7 @@ import {centerIconsInTiles} from "./pngUtils.js";
  * @returns {Promise<{message: string}>} - A placeholder promise.
  * @throws {HttpsError} - Throws HttpsError on validation errors.
  */
-export const generateAssetAppearanceExpressionsImp = onCall({timeoutSeconds: 300}, async (request) => {
+export const generateAssetAppearanceExpressionsImp = onCall({timeoutSeconds: 300, memory: "1GiB"}, async (request) => {
     if (!request.data.characterImageUrl) {
       throw new HttpsError(
         "invalid-argument",
@@ -123,8 +123,10 @@ Content:
     
     Make sure all facial expressions are different. Do not put any separator lines between tiles. Make sure the top of the head is fully visible in each tile and that there is no overlap between tiles. Background must be transparent. All tiles must be 1:1 squares.`
 
-    // Select the appropriate prompt based on the expressions style
+    // Select the appropriate prompt and model based on the expressions style
     let selectedPrompt = sharedPromptPrefix + "\n\n";
+    let selectedModel = "gpt-4o"; // Default model for most styles
+    
     switch (data.expressionsStyle) {
       case "Kawaii":
         selectedPrompt += kawaiiPrompt;
@@ -137,6 +139,7 @@ Content:
         break;
       case "Semi-Realistic":
         selectedPrompt += semiRealisticPrompt;
+        selectedModel = "gpt-4.1"; // Use gpt-4.1 for semi-realistic style
         break;
       default:
         throw new HttpsError(
@@ -148,7 +151,7 @@ Content:
 
     // Gemini - NEVER EDIT CODE STARTING HERE!
     const response = await openai.responses.create({
-      model: "gpt-4.1",
+      model: selectedModel,
       input: [
         {
           role: "user",

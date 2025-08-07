@@ -25,7 +25,7 @@ function item(acivityItem) {
  * @returns {Promise<{assetUrl: string}>} - A promise resolving with the public URL of the generated character asset.
  * @throws {HttpsError} - Throws HttpsError on validation, OpenAI, or storage errors.
  */
-export const generateAssetActivitiesIconsImp = onCall({timeoutSeconds: 300}, async (request) => {
+export const generateAssetActivitiesIconsImp = onCall({timeoutSeconds: 300, memory: "1GiB"}, async (request) => {
     if (!request.data.likedFunActivities || request.data.likedFunActivities.length != 3) {
       throw new HttpsError(
         "invalid-argument",

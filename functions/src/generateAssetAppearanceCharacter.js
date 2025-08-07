@@ -17,7 +17,7 @@ import * as logger from "firebase-functions/logger";
  * @returns {Promise<{assetUrl: string}>} - A promise resolving with the public URL of the generated character asset.
  * @throws {HttpsError} - Throws HttpsError on validation, OpenAI, or storage errors.
  */
-export const generateAssetAppearanceCharacterImp = onCall({timeoutSeconds: 300}, async (request) => {
+export const generateAssetAppearanceCharacterImp = onCall({timeoutSeconds: 300, memory: "1GiB"}, async (request) => {
     if (!request.data.photoDataUri) {
       throw new HttpsError(
         "invalid-argument",
