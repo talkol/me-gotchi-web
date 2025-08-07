@@ -86,7 +86,7 @@ Artistic Details:
     * Add blush, shine, or slight freckles to enhance personality
     * Clothing can be simplified but should retain basic patterns and color identity`;
 
-    const semiRealisticPrompt = `In each square put the face of the input character with a different varied facial expression and an art style that is stylized 2D with 3D cell shading.`;
+    const semiRealisticPrompt = `In each tile put the exact face from the input image with a different facial expression. Notice that the input image is just an illustation and not a real person. The art style is stylized 2D illustration with detailed 3D-like shading and detailed facial features. Highly expressive face maintaining the same age as the original photo.`;
 
     const celShadedPrompt = `In each square put the face of the input character with a different varied facial expression. Render the character in a stylized 2D illustration with enhanced cel shading and slight realism. The image should remain charming and animated in feel, but incorporate just enough real-world detail to bring out personality and resemblance.
 Maintain strong likeness to the source, preserving the character's:
@@ -148,7 +148,7 @@ Content:
 
     // Gemini - NEVER EDIT CODE STARTING HERE!
     const response = await openai.responses.create({
-      model: "gpt-4o",
+      model: "gpt-4.1",
       input: [
         {
           role: "user",
